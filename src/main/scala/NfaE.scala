@@ -1,18 +1,18 @@
 package regsym
 
-object NfaE {
-  def alloc(start: Int, end: Int): NfaE =
-    NfaE(start, end, Map(start -> Map.empty, end -> Map.empty))
+object Nfa {
+  def alloc(start: Int, end: Int): Nfa =
+    Nfa(start, end, Map(start -> Map.empty, end -> Map.empty))
 }
 
-case class NfaE(
+case class Nfa(
   start: Int,
   accept: Int,
   edges: Map[Int, Map[Option[Sym], Set[Int]]]
 ) {
 
-  def addEdge(from: Int, c: Option[Sym], to: Int): NfaE =
-    NfaE(start, accept, edges.get(from) match {
+  def addEdge(from: Int, c: Option[Sym], to: Int): Nfa =
+    Nfa(start, accept, edges.get(from) match {
       case None =>
         edges.updated(from, Map(c -> Set(to)))
       case Some(m) =>
@@ -38,7 +38,7 @@ case class NfaE(
     loop(from)
   }
 
-  def absorb(nfa: NfaE): NfaE = {
+  def absorb(nfa: Nfa): Nfa = {
     val triples = for {
       pair0 <- nfa.edges.iterator
       (from, m) = pair0
@@ -46,41 +46,47 @@ case class NfaE(
       (c, set) = pair1
       to <- set.iterator
     } yield (from, c, to)
-    triples.foldLeft(this: NfaE) {
+    triples.foldLeft(this: Nfa) {
       case (nfa, (from, c, to)) => nfa.addEdge(from, c, to)
     }
   }
 
   def toDfa: Dfa = {
-    def loop(queue: List[Set[Int]], bldr: Dfa.Builder[Int]): Dfa = {
+    val s = closure(Set(start))
+    val bldr = new Dfa.Builder(s)(as => as(accept))
+
+    def loop(queue: List[Set[Int]]): Dfa = {
       //println(s"loop($queue, bldr")
       queue match {
         case Nil =>
           bldr.dfa
         case p0 :: ps =>
           if (bldr.seen(p0)) {
-            loop(ps, bldr)
+            loop(ps)
           } else {
             var q = ps
             val pa = closureFollow(p0, Sym.A)
             if (pa.nonEmpty) {
+              //println(s"a ok ok: $p0 -> $pa")
               bldr.addEdge(p0, Sym.A, pa)
               q = pa :: q
+              //println(bldr.dfa)
             }
+            //println(bldr.dfa)
             val pb = closureFollow(p0, Sym.B)
             if (pb.nonEmpty) {
+              //println(s"b ok ok: $p0 -> $pa")
               bldr.addEdge(p0, Sym.B, pb)
               q = pb :: q
             }
+            //println(bldr.dfa)
             bldr.markSeen(p0)
-            loop(q, bldr)
+            loop(q)
           }
       }
     }
 
-    val s = closure(Set(start))
-    val bldr = new Dfa.Builder(s, accept)
-    loop(s :: Nil, bldr)
+    loop(s :: Nil)
   }
 
   def render: String = {

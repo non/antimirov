@@ -4,26 +4,61 @@ import scala.annotation.tailrec
 
 sealed abstract class Regex extends Product with Serializable {
 
-  def *(that: Regex): Regex = Regex.Then(this, that)
-  def +(that: Regex): Regex = Regex.Or(this, that)
-  def star: Regex = Regex.Star(this)
+  def render: String =
+    this match {
+      case Regex.Impossible => "∅"
+      case Regex.Empty => "ε"
+      case Regex.Literal(sym) => sym.toString
+      case Regex.Or(x, y) => s"(${x.render}|${y.render})"
+      case Regex.Then(x, y) => s"${x.render}${y.render}"
+      case Regex.Star(x) => s"(${x.render})*"
+    }
 
-  def toNfaE: NfaE = {
-    def recur(r: Regex, namer: Namer): NfaE =
+  def *(that: Regex): Regex =
+    if (this == Regex.Impossible) this
+    else if (that == Regex.Impossible) that
+    else if (this == Regex.Empty) that
+    else if (that == Regex.Empty) this
+    else Regex.Then(this, that)
+
+  def +(that: Regex): Regex =
+    if (this == Regex.Impossible) that
+    else if (that == Regex.Impossible) this
+    else Regex.Or(this, that)
+
+  def unary_~ : Regex =
+    (~this.toDfa).toRegex
+
+  def &(that: Regex): Regex =
+    (this.toDfa & that.toDfa).toRegex
+
+  def star: Regex =
+    this match {
+      case Regex.Impossible => Regex.Empty
+      case Regex.Empty => Regex.Empty
+      case r @ Regex.Star(_) => r
+      case _ => Regex.Star(this)
+    }
+
+  def toDfa: Dfa =
+    toNfa.toDfa
+
+  def toNfa: Nfa = {
+    def recur(r: Regex, namer: Namer): Nfa =
       r match {
         case Regex.Impossible =>
-          NfaE.alloc(namer(), namer())
+          Nfa.alloc(namer(), namer())
         case Regex.Empty =>
           val n = namer()
-          NfaE.alloc(n, n)
+          Nfa.alloc(n, n)
         case Regex.Literal(s) =>
           val (start, accept) = (namer(), namer())
-          NfaE.alloc(start, accept)
+          Nfa.alloc(start, accept)
             .addEdge(start, Some(s), accept)
         case Regex.Then(r1, r2) =>
           val nfa1 = recur(r1, namer)
           val nfa2 = recur(r2, namer)
-          NfaE.alloc(nfa1.start, nfa2.accept)
+          Nfa.alloc(nfa1.start, nfa2.accept)
             .absorb(nfa1)
             .absorb(nfa2)
             .addEdge(nfa1.accept, None, nfa2.start)
@@ -32,7 +67,7 @@ sealed abstract class Regex extends Product with Serializable {
           val nfa1 = recur(r1, namer)
           val nfa2 = recur(r2, namer)
           val accept = namer()
-          NfaE.alloc(start, accept)
+          Nfa.alloc(start, accept)
             .absorb(nfa1)
             .absorb(nfa2)
             .addEdge(start, None, nfa1.start)
