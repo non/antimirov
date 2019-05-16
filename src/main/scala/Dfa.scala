@@ -40,6 +40,25 @@ case class Dfa(
   edges: Map[Int, Map[Sym, Int]]
 ) {
 
+  def accepts(s: List[Sym]): Boolean = {
+    def loop(st0: Int, s: List[Sym]): Boolean =
+      s match {
+        case Nil =>
+          accept(st0)
+        case sym :: rest =>
+          edges.get(st0) match {
+            case None =>
+              false
+            case Some(m) =>
+              m.get(sym) match {
+                case None => false
+                case Some(st1) => loop(st1, rest)
+              }
+          }
+      }
+    loop(start, s)
+  }
+
   def addEdge(from: Int, c: Sym, to: Int): Dfa =
     Dfa(start, accept, edges.updated(from, edges.get(from) match {
       case None => Map(c -> to)

@@ -26,6 +26,15 @@ sealed abstract class Regex extends Product with Serializable {
     else if (that == Regex.Impossible) this
     else Regex.Or(this, that)
 
+  def equiv(r: Regex): Boolean =
+    subsetOf(r) && supersetOf(r)
+
+  def subsetOf(r: Regex): Boolean =
+    (this & (~r)) == Regex.Impossible
+
+  def supersetOf(r: Regex): Boolean =
+    ((~this) & r) == Regex.Impossible
+
   def unary_~ : Regex =
     (~this.toDfa).toRegex
 
