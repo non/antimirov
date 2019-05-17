@@ -11,6 +11,8 @@ object Dfa {
     var dfa: Dfa = Dfa.alloc(assign(starting))
     var seen: Set[P] = Set.empty
 
+    if (isEnd(starting)) dfa = dfa.addAccept(assign(starting))
+
     def assign(st: P): Int =
       assignments.getOrElse(st, {
         val id = nextId
@@ -81,8 +83,8 @@ case class Dfa(
     def loop(queue: List[Int]): Dfa =
       queue match {
         case Nil =>
-          bldr.addEdge(dead, Sym.A, dead)
-          bldr.addEdge(dead, Sym.B, dead)
+          // bldr.addEdge(dead, Sym.A, dead)
+          // bldr.addEdge(dead, Sym.B, dead)
           bldr.dfa
         case p0 :: rest =>
           if (bldr.seen(p0)) {

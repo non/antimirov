@@ -14,6 +14,11 @@ sealed abstract class Regex extends Product with Serializable {
       case Regex.Star(x) => s"(${x.render})*"
     }
 
+  override def toString: String = render
+
+  def *:(sym: Sym): Regex =
+    Regex.Literal(sym) * this
+
   def *(that: Regex): Regex =
     if (this == Regex.Impossible) this
     else if (that == Regex.Impossible) that
@@ -84,10 +89,14 @@ sealed abstract class Regex extends Product with Serializable {
             .addEdge(nfa1.accept, None, accept)
             .addEdge(nfa2.accept, None, accept)
         case Regex.Star(r) =>
+          val start = namer()
           val nfa = recur(r, namer)
-          nfa
-            .addEdge(nfa.start, None, nfa.accept)
-            .addEdge(nfa.accept, None, nfa.start)
+          val accept = namer()
+          Nfa.alloc(start, accept)
+            .absorb(nfa)
+            .addEdge(start, None, accept)
+            .addEdge(start, None, nfa.start)
+            .addEdge(nfa.accept, None, start)
       }
     recur(this, new Namer())
   }
