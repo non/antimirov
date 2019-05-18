@@ -17,6 +17,9 @@ object RegexTest extends Properties("RegexTest") {
   val genInput: Gen[Syms] =
     Gen.listOf(genSym).map(Syms(_))
 
+  val genLiteral: Gen[Regex] =
+    genSym.map(Regex.Literal(_))
+
   def symsFromRegex(r: Regex): Option[Gen[Syms]] =
     r match {
       case Impossible =>
@@ -54,22 +57,19 @@ object RegexTest extends Properties("RegexTest") {
         }
     }
 
+  val genBase: Gen[Regex] =
+    Gen.lzy(Gen.frequency(
+      2 -> genLiteral,
+      1 -> (for { x <- genSym; y <- genBase } yield x *: y)))
+
   def genRecur(depth: Int, f: Int => Gen[Regex]): Gen[Regex] =
-    if (depth <= 0) {
-      lazy val g: Gen[Regex] = Gen.lzy(Gen.frequency(
-        1 -> Regex.Literal(Sym.A),
-        1 -> Regex.Literal(Sym.B),
-        1 -> (for { x <- genSym; y <- g } yield x *: y)))
-      g
-    } else {
-      val g0 = f(0)
-      val g = f(depth - 1)
+    if (depth <= 0) genBase else {
+      lazy val g = f(depth - 1)
       Gen.frequency(
-        1 -> Impossible,
-        1 -> Empty,
-        10 -> Regex.Literal(Sym.A),
-        10 -> Regex.Literal(Sym.B),
-        20 -> (for { x <- genSym; y <- g } yield x *: y),
+        1 -> Gen.const(Impossible),
+        5 -> Gen.const(Empty),
+        20 -> genLiteral,
+        40 -> (for { x <- genSym; y <- g } yield x *: y),
         10 -> (for { x <- g; y <- g } yield x + y),
         5 -> (for { x <- g } yield x.star))
     }

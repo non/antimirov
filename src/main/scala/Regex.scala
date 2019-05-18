@@ -109,4 +109,13 @@ object Regex {
   case class Then(r1: Regex, r2: Regex) extends Regex
   case class Or(r1: Regex, r2: Regex) extends Regex
   case class Star(r: Regex) extends Regex
+
+  def empty: Regex =
+    Regex.Empty
+
+  def apply(sym: Sym): Regex =
+    Regex.Literal(sym)
+
+  def apply(syms: Sym*): Regex =
+    syms.foldRight(Regex.empty)(_ *: _)
 }

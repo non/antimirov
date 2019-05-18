@@ -56,7 +56,6 @@ case class Nfa(
     val bldr = new Dfa.Builder(s)(as => as(accept))
 
     def loop(queue: List[Set[Int]]): Dfa = {
-      //println(s"loop($queue, bldr")
       queue match {
         case Nil =>
           bldr.dfa
@@ -65,21 +64,13 @@ case class Nfa(
             loop(ps)
           } else {
             var q = ps
-            val pa = closureFollow(p0, Sym.A)
-            if (pa.nonEmpty) {
-              //println(s"a ok ok: $p0 -> $pa")
-              bldr.addEdge(p0, Sym.A, pa)
-              q = pa :: q
-              //println(bldr.dfa)
+            Sym.All.foreach { sym =>
+              val p1 = closureFollow(p0, sym)
+              if (p1.nonEmpty) {
+                bldr.addEdge(p0, sym, p1)
+                q = p1 :: q
+              }
             }
-            //println(bldr.dfa)
-            val pb = closureFollow(p0, Sym.B)
-            if (pb.nonEmpty) {
-              //println(s"b ok ok: $p0 -> $pa")
-              bldr.addEdge(p0, Sym.B, pb)
-              q = pb :: q
-            }
-            //println(bldr.dfa)
             bldr.markSeen(p0)
             loop(q)
           }

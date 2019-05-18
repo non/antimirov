@@ -83,19 +83,19 @@ case class Dfa(
     def loop(queue: List[Int]): Dfa =
       queue match {
         case Nil =>
-          // bldr.addEdge(dead, Sym.A, dead)
-          // bldr.addEdge(dead, Sym.B, dead)
           bldr.dfa
         case p0 :: rest =>
           if (bldr.seen(p0)) {
             loop(rest)
           } else {
-            val pa = this.follow(p0, Sym.A).getOrElse(dead)
-            bldr.addEdge(p0, Sym.A, pa)
-            val pb = this.follow(p0, Sym.B).getOrElse(dead)
-            bldr.addEdge(p0, Sym.B, pb)
+            var q = rest
+            Sym.All.foreach { sym =>
+              val p1 = this.follow(p0, sym).getOrElse(dead)
+              bldr.addEdge(p0, sym, p1)
+              q = p1 :: q
+            }
             bldr.markSeen(p0)
-            loop(pa :: pb :: rest)
+            loop(q)
           }
       }
     loop(start :: Nil)
@@ -115,19 +115,14 @@ case class Dfa(
           if (bldr.seen(p0)) {
             loop(rest)
           } else {
-            (this.follow(x0, Sym.A), that.follow(y0, Sym.A)) match {
-              case (Some(x1), Some(y1)) =>
-                val p1 = (x1, y1)
-                bldr.addEdge(p0, Sym.A, p1)
-                q = p1 :: q
-              case _ => ()
-            }
-            (this.follow(x0, Sym.B), that.follow(y0, Sym.B)) match {
-              case (Some(x1), Some(y1)) =>
-                val p1 = (x1, y1)
-                bldr.addEdge(p0, Sym.B, p1)
-                q = p1 :: q
-              case _ => ()
+            Sym.All.foreach { sym =>
+              (this.follow(x0, sym), that.follow(y0, sym)) match {
+                case (Some(x1), Some(y1)) =>
+                  val p1 = (x1, y1)
+                  bldr.addEdge(p0, sym, p1)
+                  q = p1 :: q
+                case _ => ()
+              }
             }
             bldr.markSeen(p0)
             loop(q)
