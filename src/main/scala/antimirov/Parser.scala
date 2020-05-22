@@ -91,7 +91,15 @@ object Parser {
       }
 
     def parseEscaped(i: Int): (Char, Int) =
-      if (check(i, 'u')) ???
+      if (check(i, 'u')) {
+        if (s.length <= (i + 4)) {
+          val t = s.substring(i + 1)
+          sys.error(s"expected 4 hex digits, got '$t'")
+        } else {
+          val c = Integer.parseInt(s.substring(i + 1, i + 5), 16).toChar
+          (c, i + 5)
+        }
+      }
       else (s.charAt(i), i + 1)
 
     def parseChar(i: Int): (Char, Int) = {
