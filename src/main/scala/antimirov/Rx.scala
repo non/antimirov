@@ -147,6 +147,7 @@ sealed abstract class Rx { lhs =>
         case Empty => ""
         case Var(x) => s"Var($x)"
         case Letter(c) => LetterSet.escape(c)
+        case Letters(cs) if cs.isFull => "."
         case Letters(cs) => cs.toString
         case Star(r) => recur(r, true) + "*"
         case c @ Choice(_, _) =>
