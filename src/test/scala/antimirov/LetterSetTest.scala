@@ -6,7 +6,6 @@ import org.typelevel.claimant.Claim
 
 import Arbitrary.arbitrary
 import Prop.{forAllNoShrink => forAll}
-import Re.{Phi, Empty}
 
 abstract class LetterSetTesting(name: String) extends Properties(name) {
 

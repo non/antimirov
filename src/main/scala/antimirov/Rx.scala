@@ -1,7 +1,9 @@
 package antimirov
 
 import java.lang.Double.isNaN
+import java.util.regex.{Pattern => JavaPattern}
 import scala.collection.immutable.Queue
+import scala.util.matching.{Regex => ScalaRegex}
 
 sealed abstract class Rx { lhs =>
 
@@ -146,9 +148,9 @@ sealed abstract class Rx { lhs =>
         case Phi => "∅"
         case Empty => ""
         case Var(x) => s"Var($x)"
-        case Letter(c) => LetterSet.escape(c)
+        case Letter(c) => Chars.escape(c)
         case Letters(cs) if cs.isFull => "."
-        case Letters(cs) => cs.toString
+        case Letters(cs) => cs.repr
         case Star(r) => recur(r, true) + "*"
         case c @ Choice(_, _) =>
           val s = choices(c).map(recur(_, false)).mkString("|")
@@ -157,18 +159,18 @@ sealed abstract class Rx { lhs =>
           val s = cats(c).map(recur(_, true)).mkString
           if (parens) s"($s)" else s
       }
-    "/" + recur(this, false) + "/"
+    recur(this, false)
   }
 
   //override def toString: String = scalaRepr
-  override def toString: String = repr
+  //override def toString: String = repr
 
   def scalaRepr: String = {
     def recur(re: Rx): String =
       re match {
         case Phi => "ϕ"
         case Empty => "ε"
-        case Letter(c) => LetterSet.escape(c)
+        case Letter(c) => Chars.escape(c)
         case Letters(cs) => cs.toString
         case Choice(r1, r2) => s"(${recur(r1)}+${recur(r2)})"
         case Cat(r1, r2) => s"(${recur(r1)}*${recur(r2)})"
@@ -315,6 +317,12 @@ sealed abstract class Rx { lhs =>
       case Var(_) => sys.error("!")
       case _ => 0
     }
+
+  def toJava: JavaPattern =
+    JavaPattern.compile(repr)
+
+  def toScala: ScalaRegex =
+    new ScalaRegex(repr)
 }
 
 object Rx {
@@ -324,6 +332,8 @@ object Rx {
 
   def empty: Rx = Empty
   def lambda: Rx = Empty
+
+  val dot: Rx = Rx.Letters(LetterSet.Full)
 
   def apply(c: Char): Rx =
     Letter(c)

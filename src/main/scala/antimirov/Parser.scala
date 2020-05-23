@@ -4,44 +4,51 @@ package antimirov
 
 BNF Grammar of Regular Expressions
 
-<RE>        ::= <union> | <simple-RE>
-<union>     ::= <RE> "|" <simple-RE>
-<simple-RE> ::= <concat> | <basic-RE>
-<concat>    ::= <simple-RE> <basic-RE>
-<basic-RE>  ::= <star> | <plus> | <atomic-RE>
-<star>      ::= <atomic-RE> "*"
-<plus>      ::= <atomic-RE> "+"
-<atomic-RE> ::= <group> | <dot> | <char> | <set>
-<group>     ::= "(" <RE> ")"
-<dot>       ::= "."
-<char>      ::= any non metacharacter | "\" metacharacter
-<set>       ::= <oneof> | <noneof>
-<oneof>     ::= "[" <items> "]"
-<noneof>    ::= "[^" <items> "]"
-<items>     ::= <item> | <item> <items>
-<item>      ::= <range> | <char>
-<range>     ::= <char> "-" <char>
+re        := union | simple-re
+union     := re "|" simple-re
+simple-re := concat | basic-re
+concat    := simple-re basic-re
+basic-re  := star | plus | atomic-re
+star      := atomic-re "*"
+plus      := atomic-re "+"
+atomic-re := group | "." | char | set
+group     := "(" re ")"
+char      := non-metacharacter | "\" escaped
+escaped   := unicode | coded | metacharacter
+unicode   := "u" hexchar hexchar hexchar hexchar
+coded     := "n" | "t" | ...
+set       := oneof | noneof
+oneof     := "[" items "]"
+noneof    := "[^" items "]"
+items     := item | item items
+item      := range | char
+range     := char "-" char
+
+hexchars are 0123456789abcdefABCDEF
+
+metacharacters are {}[]()^$.|*+?\\
+non-metacharacters are everything not in metacharacters
  */
 
 object Parser {
 
-  val dot: Rx = Rx.Letters(LetterSet.Full)
-
-  val special: Set[Char] =
-    "{}[]()^$.|*+?\\".toSet
+  def fmap[A, B](pair: (A, Int))(f: A => B): (B, Int) =
+    (f(pair._1), pair._2)
 
   def parse(s: String): Rx = {
 
     def peek(i: Int): Option[Char] =
-      if (i >= s.length) None
-      else Some(s.charAt(i))
+      if (i >= s.length) None else Some(s.charAt(i))
+
+    def peekn(i: Int, n: Int): Option[String] =
+      if (i + n > s.length) None else Some(s.substring(i, i + n))
 
     def check(i: Int, c: Char): Boolean =
       peek(i) == Some(c)
 
     def checkOrDie(i: Int, c: Char): Unit =
       peek(i) match {
-        case Some(c) =>
+        case Some(cc) if c == cc =>
           ()
         case o =>
           val x = o.getOrElse("eof")
@@ -50,22 +57,14 @@ object Parser {
 
     def parseRe(i: Int): (Rx, Int) = {
       val (rx0, j) = parseSimple(i)
-      if (check(j, '|')) {
-        val (rx1, k) = parseRe(j + 1)
-        (rx0 + rx1, k)
-      } else {
-        (rx0, j)
-      }
+      if (check(j, '|')) fmap(parseRe(j + 1))(rx0 + _) else (rx0, j)
     }
 
     def parseSimple(i: Int): (Rx, Int) = {
       val (rx0, j) = parseBasic(i)
       peek(j) match {
-        case Some('|') | Some(')') | None =>
-          (rx0, j)
-        case _ =>
-          val (rx1, k) = parseSimple(j)
-          (rx0 * rx1, k)
+        case Some('|') | Some(')') | None => (rx0, j)
+        case _ => fmap(parseSimple(j))(rx0 * _)
       }
     }
 
@@ -74,6 +73,7 @@ object Parser {
       peek(j) match {
         case Some('+') => (rx * rx.star, j + 1)
         case Some('*') => (rx.star, j + 1)
+        case Some('?') => (rx + Rx.empty, j + 1)
         case _ => (rx, j)
       }
     }
@@ -81,55 +81,53 @@ object Parser {
     def parseAtomic(i: Int): (Rx, Int) =
       peek(i) match {
         case Some('(') => parseGroup(i + 1)
-        case Some('.') => (dot, i + 1)
+        case Some('.') => (Rx.dot, i + 1)
+        case Some('∅') => (Rx.phi, i + 1)
         case Some('[') => parseSet(i + 1)
-        case Some('\\') =>
-          val (c, j) = parseEscaped(i + 1)
-          (Rx.Letter(c), j)
-        case Some(c) => (Rx.Letter(c), i + 1)
-        case None => sys.error("!")
+        case Some('\\') => fmap(parseEscaped(i + 1))(Rx.Letter(_))
+        case Some(c) if !Chars.Special(c) => (Rx.Letter(c), i + 1)
+        case _ => (Rx.empty, i)
       }
 
     def parseEscaped(i: Int): (Char, Int) =
-      if (check(i, 'u')) {
-        if (s.length <= (i + 4)) {
-          val t = s.substring(i + 1)
-          sys.error(s"expected 4 hex digits, got '$t'")
-        } else {
-          val c = Integer.parseInt(s.substring(i + 1, i + 5), 16).toChar
-          (c, i + 5)
-        }
+      peek(i) match {
+        case Some('u') =>
+          peekn(i + 1, 4) match {
+            case Some(Chars.HexChars(t)) =>
+              (Integer.parseInt(t, 16).toChar, i + 5)
+            case Some(t) =>
+              sys.error(s"at position $i, expected 4 hex digits, got '$t'")
+            case None =>
+              val t = s.substring(i)
+              sys.error(s"at position $i, expected 4 hex digits, got '$t'")
+          }
+        case Some(c) if Chars.Special(c) => (c, i + 1)
+        case Some(c) if Chars.Decoded.contains(c) => (Chars.Decoded(c), i + 1)
+        case Some(c) => sys.error(s"at position $i, got invalid escape sequence: '\\$c'")
+        case None => sys.error(s"at position $i, expected character, got 'eof'")
       }
-      else (s.charAt(i), i + 1)
 
-    def parseChar(i: Int): (Char, Int) = {
-      val c = s.charAt(i)
-      require(!special(c))
-      if (check(c, '\\')) {
-        parseEscaped(i + 1)
-      } else {
-        (c, i + 1)
+    def parseChar(i: Int): (Char, Int) =
+      peek(i) match {
+        case None =>
+          sys.error(s"at position $i, expected character, got 'eof'")
+        case Some('\\') =>
+          parseEscaped(i + 1)
+        case Some(c) if Chars.Special(c) =>
+          sys.error(s"at position $i, got illegal character '$c'")
+        case Some(c) =>
+          (c, i + 1)
       }
-    }
 
     def parseItem(i: Int): (LetterSet, Int) = {
       val (c0, j) = parseChar(i)
-      if (check(j, '-')) {
-        val (c1, k) = parseChar(j + 1)
-        (LetterSet(c0 to c1), k)
-      } else {
-        (LetterSet(c0 to c0), j)
-      }
+      if (check(j, '-')) fmap(parseChar(j + 1))(c1 => LetterSet(c0 to c1))
+      else (LetterSet(c0 to c0), j)
     }
 
     def parseItems(i: Int): (LetterSet, Int) = {
       val (ls0, j) = parseItem(i)
-      if (check(j, ']')) {
-        (ls0, j + 1)
-      } else {
-        val (ls1, k) = parseItems(j)
-        (ls0 | ls1, k)
-      }
+      if (check(j, ']')) (ls0, j) else fmap(parseItems(j))(ls0 | _)
     }
 
     def parseSet(i: Int): (Rx, Int) = {
@@ -138,7 +136,7 @@ object Parser {
       val (ls0, k) = parseItems(j)
       val ls = if (rev) ~ls0 else ls0
       checkOrDie(k, ']')
-      (Rx.Letters(ls), k)
+      (Rx.Letters(ls), k + 1)
     }
 
     def parseGroup(i: Int): (Rx, Int) = {

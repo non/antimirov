@@ -87,9 +87,16 @@ class LetterSet(private val array: Array[Char]) { lhs =>
     Arrays.hashCode(array)
 
   override def toString: String =
+    array.mkString("LetterSet(", "", ")")
+  //override def toString: String = repr
+
+  def escape(c: Char): String =
+    Chars.escape(c, Chars.RangeSpecial)
+
+  def repr: String =
     ranges.map {
-      case (x, y) if x == y => LetterSet.escape(x)
-      case (x, y) => s"${LetterSet.escape(x)}-${LetterSet.escape(y)}"
+      case (x, y) if x == y => escape(x)
+      case (x, y) => s"${escape(x)}-${escape(y)}"
     }.mkString("[", "", "]")
 
   lazy val size: Int =
@@ -403,16 +410,6 @@ object LetterSet {
 
   val Full: LetterSet =
     new LetterSet(Array(Char.MinValue, Char.MaxValue))
-
-  def escape(s: String): String = {
-    val sb = new StringBuilder
-    s.foreach(c => sb.append(escape(c)))
-    sb.toString
-  }
-
-  def escape(c: Char): String =
-    if (' ' <= c && c <= '~') c.toString
-    else "\\u%04x".format(c.toInt)
 
   def fromIterator(it: Iterator[(Char, Char)]): LetterSet = {
     var i = -1
