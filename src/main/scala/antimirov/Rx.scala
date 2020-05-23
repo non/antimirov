@@ -162,8 +162,7 @@ sealed abstract class Rx { lhs =>
     recur(this, false)
   }
 
-  //override def toString: String = scalaRepr
-  //override def toString: String = repr
+  override def toString: String = repr
 
   def scalaRepr: String = {
     def recur(re: Rx): String =

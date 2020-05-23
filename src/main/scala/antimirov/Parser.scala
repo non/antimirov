@@ -28,9 +28,14 @@ hexchars are 0123456789abcdefABCDEF
 
 metacharacters are {}[]()^$.|*+?\\
 non-metacharacters are everything not in metacharacters
+
  */
 
 object Parser {
+
+  implicit class RxInterpolation(val sc: StringContext) {
+    def rx(args: Any*): Rx = Parser.parse(sc.parts.head)
+  }
 
   def fmap[A, B](pair: (A, Int))(f: A => B): (B, Int) =
     (f(pair._1), pair._2)
