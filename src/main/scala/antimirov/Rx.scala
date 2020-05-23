@@ -83,6 +83,9 @@ sealed abstract class Rx { lhs =>
   def ^(rhs: Rx): Rx =
     Rx.xor(lhs, rhs)
 
+  def unary_~ : Rx =
+    Rx.difference(Rx.Universe, this)
+
   def equiv(rhs: Rx): Boolean = {
     def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Boolean =
       pair match {
@@ -334,6 +337,9 @@ object Rx {
 
   val dot: Rx = Rx.Letters(LetterSet.Full)
 
+  def parse(s: String): Rx =
+    Parser.parse(s)
+
   def apply(c: Char): Rx =
     Letter(c)
 
@@ -361,11 +367,14 @@ object Rx {
   def choice(rs: Iterable[Rx]): Rx =
     if (rs.isEmpty) Phi else rs.reduceLeft(_ + _)
 
-  def universe(alphabet: LetterSet): Rx =
+  val Universe: Rx =
+    closure(LetterSet.Full)
+
+  def closure(alphabet: LetterSet): Rx =
     Letters(alphabet).star
 
-  def universe(alphabet: Set[Char]): Rx =
-    universe(LetterSet(alphabet))
+  def closure(alphabet: Set[Char]): Rx =
+    closure(LetterSet(alphabet))
 
   case object Phi extends Rx // matches nothing
   case object Empty extends Rx // matches empty string ("")

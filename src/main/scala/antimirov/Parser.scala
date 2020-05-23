@@ -89,12 +89,12 @@ object Parser {
         case Some('.') => (Rx.dot, i + 1)
         case Some('∅') => (Rx.phi, i + 1)
         case Some('[') => parseSet(i + 1)
-        case Some('\\') => fmap(parseEscaped(i + 1))(Rx.Letter(_))
+        case Some('\\') => fmap(parseEscaped(i + 1, Chars.Special))(Rx.Letter(_))
         case Some(c) if !Chars.Special(c) => (Rx.Letter(c), i + 1)
         case _ => (Rx.empty, i)
       }
 
-    def parseEscaped(i: Int): (Char, Int) =
+    def parseEscaped(i: Int, special: Set[Char]): (Char, Int) =
       peek(i) match {
         case Some('u') =>
           peekn(i + 1, 4) match {
@@ -106,7 +106,7 @@ object Parser {
               val t = s.substring(i)
               sys.error(s"at position $i, expected 4 hex digits, got '$t'")
           }
-        case Some(c) if Chars.Special(c) => (c, i + 1)
+        case Some(c) if special(c) => (c, i + 1)
         case Some(c) if Chars.Decoded.contains(c) => (Chars.Decoded(c), i + 1)
         case Some(c) => sys.error(s"at position $i, got invalid escape sequence: '\\$c'")
         case None => sys.error(s"at position $i, expected character, got 'eof'")
@@ -117,8 +117,8 @@ object Parser {
         case None =>
           sys.error(s"at position $i, expected character, got 'eof'")
         case Some('\\') =>
-          parseEscaped(i + 1)
-        case Some(c) if Chars.Special(c) =>
+          parseEscaped(i + 1, Chars.RangeSpecial)
+        case Some(c) if Chars.RangeSpecial(c) =>
           sys.error(s"at position $i, got illegal character '$c'")
         case Some(c) =>
           (c, i + 1)

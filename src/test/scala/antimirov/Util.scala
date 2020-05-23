@@ -102,7 +102,7 @@ object Util {
     LetterSet(cmin to cmax)
 
   val U: Rx =
-    Rx.universe(alphabet)
+    Rx.closure(alphabet)
 
   val genSym: Gen[Char] =
     Gen.choose(cmin, cmax)
