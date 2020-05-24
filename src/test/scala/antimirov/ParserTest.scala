@@ -1,7 +1,6 @@
 package antimirov
 
-import org.scalacheck.{Gen, Prop, Properties, Test}
-import org.scalacheck.rng.Seed
+import org.scalacheck.{Prop, Properties}
 import org.typelevel.claimant.Claim
 
 import Prop.{forAllNoShrink => forAll}

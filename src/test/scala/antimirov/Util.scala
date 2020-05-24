@@ -1,8 +1,7 @@
 package antimirov
 
-import org.scalacheck.{Gen, Prop, Properties, Test}
+import org.scalacheck.{Gen, Prop, Properties}
 import org.scalacheck.rng.Seed
-import org.typelevel.claimant.Claim
 
 import Prop.{forAllNoShrink => forAll}
 
@@ -13,7 +12,7 @@ object Util {
       Prop(lhs === rhs) :| s"$lhs === $rhs"
   }
 
-  import java.util.concurrent.{Callable, ForkJoinPool, FutureTask, TimeUnit}
+  import java.util.concurrent.{Callable, ForkJoinPool, FutureTask}
 
   val pool = new ForkJoinPool()
 
@@ -27,7 +26,6 @@ object Util {
     val errorT = start + errorMs * 1000000L
 
     var result: Option[Prop] = None
-    var slow = false
     var t0 = start
     while (!task.isDone && t0 < errorT) {
       Thread.sleep(0L, 100000)
@@ -171,13 +169,19 @@ trait TimingProperties { self: Properties =>
   // def timedProp[A, B, C](name: String, ga: Gen[A], gb: Gen[B], gc: Gen[C])(f: (A, B, C) => Prop): Unit =
   //   self.property(name) = forAll(ga, gb, gc)(f)
 
-  def timedProp[A](name: String, ga: Gen[A])(f: A => Prop): Unit =
+  def timedProp[A](name: String, ga: Gen[A])(f: A => Prop): Unit = {
     self.property(name) =
       forAll(ga)(a => timed(s"$name : $a", warnMs, errorMs)(f(a)))
-  def timedProp[A, B](name: String, ga: Gen[A], gb: Gen[B])(f: (A, B) => Prop): Unit =
+    ()
+  }
+  def timedProp[A, B](name: String, ga: Gen[A], gb: Gen[B])(f: (A, B) => Prop): Unit = {
     self.property(name) =
       forAll(ga, gb)((a, b) => timed(s"$name : $a : $b", warnMs, errorMs)(f(a, b)))
-  def timedProp[A, B, C](name: String, ga: Gen[A], gb: Gen[B], gc: Gen[C])(f: (A, B, C) => Prop): Unit =
+    ()
+  }
+  def timedProp[A, B, C](name: String, ga: Gen[A], gb: Gen[B], gc: Gen[C])(f: (A, B, C) => Prop): Unit = {
     self.property(name) =
       forAll(ga, gb, gc)((a, b, c) => timed(s"$name : $a : $b : $c", warnMs, errorMs)(f(a, b, c)))
+    ()
+  }
 }

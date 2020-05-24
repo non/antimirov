@@ -1,7 +1,6 @@
 package antimirov
 
 import org.scalacheck.{Arbitrary, Gen, Prop, Properties, Test}
-import org.scalacheck.rng.Seed
 import org.typelevel.claimant.Claim
 
 import Arbitrary.arbitrary

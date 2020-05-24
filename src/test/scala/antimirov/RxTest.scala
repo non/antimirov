@@ -2,10 +2,8 @@ package antimirov
 
 import java.util.regex.Pattern
 import org.scalacheck.{Gen, Prop, Properties, Test}
-import org.scalacheck.rng.Seed
 import org.typelevel.claimant.Claim
 
-import Prop.{forAllNoShrink => forAll}
 import Util._
 
 object RxTest extends Properties("RxTest") with TimingProperties { self =>

@@ -1,12 +1,6 @@
 package antimirov
 
-import java.util.regex.Pattern
-import org.scalacheck.{Gen, Prop, Properties, Test}
-import org.scalacheck.rng.Seed
-import org.typelevel.claimant.Claim
-
-import Prop.{forAllNoShrink => forAll}
-import Util._
+import org.scalacheck.{Prop, Properties}
 
 object ReadmeTest extends Properties("ReadmeTest") {
 
