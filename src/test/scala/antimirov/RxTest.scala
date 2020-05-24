@@ -10,8 +10,8 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
 
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
-      .withMinSuccessfulTests(1000)
-      //.withPropFilter(Some("regression"))
+      .withMinSuccessfulTests(10)
+      //.withPropFilter(Some("timing"))
 
   //override def scale: Long = 10L
 
@@ -166,6 +166,43 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
       true
     }
   }
+
+  // property("timing") = {
+  //   List(2, 4, 8, 16, 32, 64).forall { n =>
+  //     val str = "[0-9a-f]" * n
+  //     val rx = Rx.parse(str)
+  //     val data = "c63621736219939429349a736271367213627362713627361277223743646784593f854"
+  //     val short = data.substring(0, n - 1)
+  //     val good = data.substring(0, n)
+  //     val long = data.substring(0, n + 1)
+  //
+  //     def timer[A](name: String)(body: => A): Unit = {
+  //       val a0: A = body // warmup
+  //       val t0 = System.nanoTime()
+  //       val a1: A = body // real
+  //       val t = (System.nanoTime() - t0) / 1000000.0
+  //       require(a0 == a1)
+  //       val s = a1.toString
+  //       val limit = 20
+  //       if (s.length >= limit) {
+  //         println(s"$name took $t ms (${s.substring(0, limit)}...)")
+  //       } else {
+  //         println(s"$name took $t ms ($s)")
+  //       }
+  //     }
+  //
+  //     println(s"n=$n")
+  //     timer(s" - hex1($n): r <= U")(rx <= Rx.Universe)
+  //     timer(s" - hex2($n): r <= r*")(rx <= rx.star)
+  //     timer(s" - hex3($n): r & U")(rx & Rx.Universe)
+  //     timer(s" - hex4($n): r accepts good")(rx.accepts(good))
+  //     timer(s" - hex5($n): r rejects short")(rx.rejects(short))
+  //     timer(s" - hex6($n): r rejects long")(rx.rejects(long))
+  //     println("")
+  //
+  //     true
+  //   }
+  // }
 
   def comparePatterns(r: Rx, p: Pattern, lst: Set[String]): Prop =
     lst.map { s =>

@@ -9,7 +9,7 @@ object Util {
 
   implicit class PropEq(val lhs: Rx) extends AnyVal {
     def =?=(rhs: Rx): Prop =
-      Prop(lhs === rhs) :| s"$lhs === $rhs"
+      Prop(lhs === rhs) :| s"/$lhs/ === /$rhs/"
   }
 
   import java.util.concurrent.{Callable, ForkJoinPool, FutureTask}

@@ -10,7 +10,8 @@ lazy val antimirovSettings = Seq(
     "org.typelevel" %% "claimant" % "0.1.3" % Test ::
     Nil,
   testOptions in Test +=
-    Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "1", "-w", "8"),
+    //Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "1", "-w", "8"),
+    Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "1"),
   scalacOptions ++=
     "-deprecation" ::
     "-encoding" :: "UTF-8" ::

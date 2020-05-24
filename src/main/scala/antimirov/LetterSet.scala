@@ -86,8 +86,7 @@ class LetterSet(private val array: Array[Char]) { lhs =>
     Arrays.hashCode(array)
 
   override def toString: String =
-    array.mkString("LetterSet(", "", ")")
-  //override def toString: String = repr
+    repr
 
   def escape(c: Char): String =
     Chars.escape(c, Chars.RangeSpecial)
@@ -142,7 +141,10 @@ class LetterSet(private val array: Array[Char]) { lhs =>
     iterator.forall(f)
 
   def isEmpty: Boolean =
-    array.isEmpty
+    array.length == 0
+
+  def nonEmpty: Boolean =
+    array.length != 0
 
   def isSingleton: Boolean =
     array.length == 2 && array(0) == array(1)
@@ -436,6 +438,35 @@ object LetterSet {
 
   def union(x: LetterSet, y: LetterSet): LetterSet =
     LetterSet.fromIterator(diff(x, y).map(_.value))
+
+  // assumes lhs and rhs are disjoint
+  def venn(lhs: List[LetterSet], rhs: List[LetterSet]): List[Diff[LetterSet]] = {
+    type S = LetterSet
+    def recur(lhs: List[S], rhs: List[S], res: List[Diff[S]]): List[Diff[S]] =
+      lhs match {
+        case x0 :: xs =>
+          var x = x0
+          var r = res
+          val b = List.newBuilder[S]
+          rhs.foreach { y =>
+            val xy = x & y
+            if (xy.isEmpty) {
+              b += y
+            } else {
+              x = x -- xy
+              r = Diff.Both(xy) :: r
+              val yxy = y -- xy
+              if (yxy.nonEmpty) b += yxy
+            }
+          }
+          if (x.nonEmpty) r = Diff.Left(x) :: r
+          recur(xs, b.result, r)
+
+        case Nil =>
+          rhs.map(Diff.Right(_)) ::: res
+      }
+    recur(lhs, rhs, Nil)
+  }
 
   def diff(x: LetterSet, y: LetterSet): Iterator[Diff[(Char, Char)]] =
     diff(x.ranges, y.ranges)

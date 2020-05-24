@@ -8,23 +8,20 @@ sealed abstract class Rx { lhs =>
 
   import Rx._
 
-  lazy val firstRanges: LazyStream[(Char, Char)] = {
-    def recur(r: Rx): Iterator[(Char, Char)] =
-      r match {
-        case Phi => Iterator.empty
-        case Empty => Iterator.empty
-        case Letter(c) => Iterator((c, c))
-        case Letters(cs) => cs.ranges
-        case Choice(r1, r2) =>
-          LetterSet.diff(recur(r1), recur(r2)).map(_.value)
-        case Concat(r1, r2) if r1.acceptsEmpty =>
-          LetterSet.diff(recur(r1), recur(r2)).map(_.value)
-        case Concat(r1, _) => recur(r1)
-        case Star(r) => recur(r)
-        case Var(_) => sys.error("!")
-      }
-    LazyStream.fromIterator(recur(this))
-  }
+  lazy val firstSet: List[LetterSet] =
+    this match {
+      case Phi => Nil
+      case Empty => Nil
+      case Letter(c) => LetterSet(c) :: Nil
+      case Letters(cs) => cs :: Nil
+      case Choice(r1, r2) =>
+        LetterSet.venn(r1.firstSet, r2.firstSet).map(_.value)
+      case Concat(r1, r2) if r1.acceptsEmpty =>
+        LetterSet.venn(r1.firstSet, r2.firstSet).map(_.value)
+      case Concat(r1, _) => r1.firstSet
+      case Star(r) => r.firstSet
+      case Var(_) => sys.error("!")
+    }
 
   def accepts(s: String): Boolean = {
     def recur(r: Rx, i: Int): Iterator[Unit] =
@@ -92,14 +89,11 @@ sealed abstract class Rx { lhs =>
         case (r1, r2) if r1.isPhi != r2.isPhi => false
         case _ if env(pair) => true
         case (r1, r2) =>
-          val alpha: Iterator[(Boolean, Char)] =
-            LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator).map {
-              case Diff.Both((c, _)) => (true, c)
-              case _ => (false, '\u0000')
-            }
           val env2 = env + pair
-          alpha.forall { case (ok, c) =>
-            ok && recur(env2, (r1.deriv(c), r2.deriv(c)))
+          val alpha = LetterSet.venn(r1.firstSet, r2.firstSet)
+          alpha.forall(_.isBoth) && alpha.forall { d =>
+            val c = d.value.minOption.get
+            recur(env2, (r1.deriv(c), r2.deriv(c)))
           }
       }
     recur(Set.empty, (lhs, rhs))
@@ -291,32 +285,30 @@ sealed abstract class Rx { lhs =>
           0.0
         case (lhs, rhs) =>
 
-          var res =
-            (lhs.acceptsEmpty, rhs.acceptsEmpty) match {
-              case (false, true) => -1.0
-              case (true, false) => 1.0
-              case _ => 0.0
-            }
+          var res = (lhs.acceptsEmpty, rhs.acceptsEmpty) match {
+            case (false, true) => -1.0
+            case (true, false) => 1.0
+            case _ => 0.0
+          }
 
-          var alpha: List[Char] = Nil
-          val diffIt = LetterSet.diff(lhs.firstRanges.iterator, rhs.firstRanges.iterator)
+          val alpha = LetterSet.venn(lhs.firstSet, rhs.firstSet).iterator
+          val diffIt = alpha.iterator
           while (diffIt.hasNext) {
             diffIt.next match {
-              case Diff.Both((c, _)) =>
-                alpha = c :: alpha
               case Diff.Left(_) =>
                 if (res < 0.0) return Double.NaN
                 res = 1.0
               case Diff.Right(_) =>
                 if (res > 0.0) return Double.NaN
                 res = -1.0
+              case _ => ()
             }
           }
 
           val env2 = env + pair
           val alphaIt = alpha.iterator
           while (alphaIt.hasNext && !isNaN(res)) {
-            val c = alphaIt.next
+            val c = alphaIt.next.value.minOption.get
             val x = recur(env2, (lhs.deriv(c), rhs.deriv(c)))
             res = acc(res, x)
           }
@@ -325,15 +317,6 @@ sealed abstract class Rx { lhs =>
 
     if (lhs == rhs) 0.0 else recur(Set.empty, (lhs, rhs))
   }
-
-  def starDepth: Int =
-    this match {
-      case Star(r) => r.starDepth + 1
-      case Choice(r1, r2) => Integer.max(r1.starDepth, r2.starDepth)
-      case Concat(r1, r2) => Integer.max(r1.starDepth, r2.starDepth)
-      case Var(_) => sys.error("!")
-      case _ => 0
-    }
 
   def toJava: JavaPattern =
     JavaPattern.compile(repr)
@@ -412,15 +395,15 @@ object Rx {
             case Some(res) =>
               res
             case None =>
-              val alpha: Iterator[(Char, Char)] =
-                LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator).collect {
-                  case Diff.Both(pair) => pair
-                }
-
+              val alpha = LetterSet.venn(r1.firstSet, r2.firstSet).collect {
+                case Diff.Both(cs) => cs
+              }
               val env2 = env.updated(pair, Var(cnt))
-              def f(cc: (Char, Char)): Rx =
-                Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
-              val rr = Rx.choice(alpha.map(f).toList)
+              def f(cs: LetterSet): Rx = {
+                val c = cs.minOption.get
+                Rx(cs) * recur(cnt + 1, env2, (r1.deriv(c), r2.deriv(c)))
+              }
+              val rr = Rx.choice(alpha.map(f))
               val rr2 = if (r1.acceptsEmpty && r2.acceptsEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
@@ -441,16 +424,16 @@ object Rx {
             case Some(res) =>
               res
             case None =>
-              val alpha: Iterator[(Char, Char)] =
-                LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator).collect {
-                  case Diff.Both(pair) => pair
-                  case Diff.Left(pair) => pair
-                }
-
+              val alpha = LetterSet.venn(r1.firstSet, r2.firstSet).collect {
+                case Diff.Both(cs) => cs
+                case Diff.Left(cs) => cs
+              }
               val env2 = env.updated(pair, Var(cnt))
-              def f(cc: (Char, Char)): Rx =
-                Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
-              val rr = Rx.choice(alpha.map(f).toList)
+              def f(cs: LetterSet): Rx = {
+                val c = cs.minOption.get
+                Rx(cs) * recur(cnt + 1, env2, (r1.deriv(c), r2.deriv(c)))
+              }
+              val rr = Rx.choice(alpha.map(f))
               val rr2 = if (r1.acceptsEmpty && !r2.acceptsEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
@@ -472,11 +455,13 @@ object Rx {
             case Some(res) =>
               res
             case None =>
-              val alpha = LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator).map(_.value)
+              val alpha = LetterSet.venn(r1.firstSet, r2.firstSet).map(_.value)
               val env2 = env.updated(pair, Var(cnt))
-              def f(cc: (Char, Char)): Rx =
-                Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
-              val rr = Rx.choice(alpha.map(f).toList)
+              def f(cs: LetterSet): Rx = {
+                val c = cs.minOption.get
+                Rx(cs) * recur(cnt + 1, env2, (r1.deriv(c), r2.deriv(c)))
+              }
+              val rr = Rx.choice(alpha.map(f))
               val rr2 = if (r1.acceptsEmpty ^ r2.acceptsEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
