@@ -113,8 +113,7 @@ TBD
 
 ### Copyright and License
 
-All code is available to you under the MIT license, available at
-http://opensource.org/licenses/mit-license.php and also in the
-[COPYING](COPYING) file.
+All code is available to you under the Apache 2 license, available at
+https://opensource.org/licenses/Apache-2.0.
 
 Copyright Erik Osheim, 2020.

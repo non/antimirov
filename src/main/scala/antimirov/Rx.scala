@@ -17,9 +17,9 @@ sealed abstract class Rx { lhs =>
         case Letters(cs) => cs.ranges
         case Choice(r1, r2) =>
           LetterSet.diff(recur(r1), recur(r2)).map(_.value)
-        case Cat(r1, r2) if r1.acceptsEmpty =>
+        case Concat(r1, r2) if r1.acceptsEmpty =>
           LetterSet.diff(recur(r1), recur(r2)).map(_.value)
-        case Cat(r1, _) => recur(r1)
+        case Concat(r1, _) => recur(r1)
         case Star(r) => recur(r)
         case Var(_) => sys.error("!")
       }
@@ -64,7 +64,7 @@ sealed abstract class Rx { lhs =>
     if (lhs == Phi || rhs == Phi) Phi
     else if (lhs == Empty) rhs
     else if (rhs == Empty) lhs
-    else Cat(lhs, rhs)
+    else Concat(lhs, rhs)
 
   def star: Rx =
     this match {
@@ -140,7 +140,7 @@ sealed abstract class Rx { lhs =>
       }
     def cats(re: Rx): List[Rx] =
       re match {
-        case Cat(r1, r2) => cats(r1) ::: cats(r2)
+        case Concat(r1, r2) => cats(r1) ::: cats(r2)
         case r => List(r)
       }
     def recur(re: Rx, parens: Boolean): String =
@@ -155,7 +155,7 @@ sealed abstract class Rx { lhs =>
         case c @ Choice(_, _) =>
           val s = choices(c).map(recur(_, false)).mkString("|")
           if (parens) s"($s)" else s
-        case c @ Cat(_, _) =>
+        case c @ Concat(_, _) =>
           val s = cats(c).map(recur(_, true)).mkString
           if (parens) s"($s)" else s
       }
@@ -172,7 +172,7 @@ sealed abstract class Rx { lhs =>
         case Letter(c) => Chars.escape(c)
         case Letters(cs) => cs.toString
         case Choice(r1, r2) => s"(${recur(r1)}+${recur(r2)})"
-        case Cat(r1, r2) => s"(${recur(r1)}*${recur(r2)})"
+        case Concat(r1, r2) => s"(${recur(r1)}*${recur(r2)})"
         case Star(Letter(c)) => s"$c.star"
         case Star(Letters(cs)) => s"$cs.star"
         case Star(r) => s"(${recur(r)}).star"
@@ -192,7 +192,7 @@ sealed abstract class Rx { lhs =>
       case Phi => true
       case Empty | Letter(_) | Letters(_) | Star(_) | Var(_) => false
       case Choice(r1, r2) => r1.isPhi && r2.isPhi
-      case Cat(r1, r2) => r1.isPhi || r2.isPhi
+      case Concat(r1, r2) => r1.isPhi || r2.isPhi
     }
 
   def isEmpty: Boolean =
@@ -200,7 +200,7 @@ sealed abstract class Rx { lhs =>
       case Empty => true
       case Phi | Letter(_) | Letters(_) | Star(_) | Var(_) => false
       case Choice(r1, r2) => r1.isEmpty && r2.isEmpty
-      case Cat(r1, r2) => r1.isEmpty && r2.isEmpty
+      case Concat(r1, r2) => r1.isEmpty && r2.isEmpty
     }
 
   lazy val acceptsEmpty: Boolean =
@@ -208,7 +208,7 @@ sealed abstract class Rx { lhs =>
       case Empty | Star(_) => true
       case Phi | Letter(_) | Letters(_) => false
       case Choice(r1, r2) => r1.acceptsEmpty || r2.acceptsEmpty
-      case Cat(r1, r2) => r1.acceptsEmpty && r2.acceptsEmpty
+      case Concat(r1, r2) => r1.acceptsEmpty && r2.acceptsEmpty
       case Var(_) => sys.error("!")
     }
 
@@ -226,7 +226,7 @@ sealed abstract class Rx { lhs =>
       case Letter(_) | Letters(_) => Set.empty
       case Choice(r1, r2) => r1.partialDeriv(x) | r2.partialDeriv(x)
       case Star(r) => r.partialDeriv(x).filter(_ != Phi).map(_ * this)
-      case Cat(r1, r2) =>
+      case Concat(r1, r2) =>
         val s1 = r1.partialDeriv(x).map(_ * r2)
         if (r1.acceptsEmpty) s1 | r2.partialDeriv(x) else s1
     }
@@ -241,7 +241,7 @@ sealed abstract class Rx { lhs =>
       r match {
         case v @ Var(y) =>
           if (y == x) (List(Empty), Nil) else (Nil, List(v))
-        case Cat(r1, r2) =>
+        case Concat(r1, r2) =>
           val (rs1, bs1) = recur(r1, x)
           val (rs2, bs2) = recur(r2, x)
           (cart(rs1, rs2) ::: cart(rs1, bs2) ::: cart(bs1, rs2), cart(bs1, bs2))
@@ -330,7 +330,7 @@ sealed abstract class Rx { lhs =>
     this match {
       case Star(r) => r.starDepth + 1
       case Choice(r1, r2) => Integer.max(r1.starDepth, r2.starDepth)
-      case Cat(r1, r2) => Integer.max(r1.starDepth, r2.starDepth)
+      case Concat(r1, r2) => Integer.max(r1.starDepth, r2.starDepth)
       case Var(_) => sys.error("!")
       case _ => 0
     }
@@ -396,7 +396,7 @@ object Rx {
   case class Letter(c: Char) extends Rx // single character
   case class Letters(ls: LetterSet) extends Rx // single character, one of a set
   case class Choice(r1: Rx, r2: Rx) extends Rx // either
-  case class Cat(r1: Rx, r2: Rx) extends Rx // concatenation
+  case class Concat(r1: Rx, r2: Rx) extends Rx // concatenation
   case class Star(r: Rx) extends Rx // kleene star
   case class Var(x: Int) extends Rx // used internally
 

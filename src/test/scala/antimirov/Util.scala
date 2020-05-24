@@ -63,7 +63,7 @@ object Util {
           val i = ((n & Long.MaxValue) % cs.size).toInt
           val c = cs.iterator.drop(i).next
           (s1, sb0 += c)
-        case Rx.Cat(x, y) =>
+        case Rx.Concat(x, y) =>
           val (s1, sb1) = recur(x, s0, sb0)
           recur(y, s1, sb1)
         case Rx.Choice(x, y) =>
