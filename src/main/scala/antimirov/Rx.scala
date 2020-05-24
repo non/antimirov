@@ -17,7 +17,7 @@ sealed abstract class Rx { lhs =>
         case Letters(cs) => cs.ranges
         case Choice(r1, r2) =>
           LetterSet.diff(recur(r1), recur(r2)).map(_.value)
-        case Cat(r1, r2) if r1.matchesEmpty =>
+        case Cat(r1, r2) if r1.acceptsEmpty =>
           LetterSet.diff(recur(r1), recur(r2)).map(_.value)
         case Cat(r1, _) => recur(r1)
         case Star(r) => recur(r)
@@ -26,18 +26,18 @@ sealed abstract class Rx { lhs =>
     LazyStream.fromIterator(recur(this))
   }
 
-  def rejects(s: String): Boolean =
-    !accepts(s)
-
   def accepts(s: String): Boolean = {
     def recur(r: Rx, i: Int): Iterator[Unit] =
       if (i >= s.length) {
-        if (r.matchesEmpty) Iterator(()) else Iterator.empty
+        if (r.acceptsEmpty) Iterator(()) else Iterator.empty
       } else {
         r.partialDeriv(s.charAt(i)).iterator.flatMap(recur(_, i + 1))
       }
     recur(this, 0).hasNext
   }
+
+  def rejects(s: String): Boolean =
+    !accepts(s)
 
   def +(rhs: Rx): Rx =
     (lhs, rhs) match {
@@ -88,7 +88,7 @@ sealed abstract class Rx { lhs =>
   def equiv(rhs: Rx): Boolean = {
     def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Boolean =
       pair match {
-        case (r1, r2) if r1.matchesEmpty != r2.matchesEmpty => false
+        case (r1, r2) if r1.acceptsEmpty != r2.acceptsEmpty => false
         case (r1, r2) if r1.isPhi != r2.isPhi => false
         case _ if env(pair) => true
         case (r1, r2) =>
@@ -203,14 +203,17 @@ sealed abstract class Rx { lhs =>
       case Cat(r1, r2) => r1.isEmpty && r2.isEmpty
     }
 
-  lazy val matchesEmpty: Boolean =
+  lazy val acceptsEmpty: Boolean =
     this match {
       case Empty | Star(_) => true
       case Phi | Letter(_) | Letters(_) => false
-      case Choice(r1, r2) => r1.matchesEmpty || r2.matchesEmpty
-      case Cat(r1, r2) => r1.matchesEmpty && r2.matchesEmpty
+      case Choice(r1, r2) => r1.acceptsEmpty || r2.acceptsEmpty
+      case Cat(r1, r2) => r1.acceptsEmpty && r2.acceptsEmpty
       case Var(_) => sys.error("!")
     }
+
+  def rejectsEmpty: Boolean =
+    !acceptsEmpty
 
   def deriv(c: Char): Rx =
     Rx.choice(partialDeriv(c))
@@ -225,7 +228,7 @@ sealed abstract class Rx { lhs =>
       case Star(r) => r.partialDeriv(x).filter(_ != Phi).map(_ * this)
       case Cat(r1, r2) =>
         val s1 = r1.partialDeriv(x).map(_ * r2)
-        if (r1.matchesEmpty) s1 | r2.partialDeriv(x) else s1
+        if (r1.acceptsEmpty) s1 | r2.partialDeriv(x) else s1
     }
 
   def resolve(x: Int): Rx = {
@@ -278,18 +281,18 @@ sealed abstract class Rx { lhs =>
           if (lhs.isPhi) 0.0 else 1.0
         case (Empty, rhs) =>
           if (rhs.isEmpty) 0.0
-          else if (rhs.matchesEmpty) -1.0
+          else if (rhs.acceptsEmpty) -1.0
           else Double.NaN
         case (lhs, Empty) =>
           if (lhs.isEmpty) 0.0
-          else if (lhs.matchesEmpty) 1.0
+          else if (lhs.acceptsEmpty) 1.0
           else Double.NaN
         case _ if env(pair) =>
           0.0
         case (lhs, rhs) =>
 
           var res =
-            (lhs.matchesEmpty, rhs.matchesEmpty) match {
+            (lhs.acceptsEmpty, rhs.acceptsEmpty) match {
               case (false, true) => -1.0
               case (true, false) => 1.0
               case _ => 0.0
@@ -402,8 +405,8 @@ object Rx {
       val (r1, r2) = pair
       pair match {
         case (Phi, _) | (_, Phi) => Phi
-        case (Empty, r2) => if (r2.matchesEmpty) Empty else Phi
-        case (r1, Empty) => if (r1.matchesEmpty) Empty else Phi
+        case (Empty, r2) => if (r2.acceptsEmpty) Empty else Phi
+        case (r1, Empty) => if (r1.acceptsEmpty) Empty else Phi
         case (r1, r2) =>
           env.get(pair) match {
             case Some(res) =>
@@ -418,7 +421,7 @@ object Rx {
               def f(cc: (Char, Char)): Rx =
                 Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
               val rr = Rx.choice(alpha.map(f).toList)
-              val rr2 = if (r1.matchesEmpty && r2.matchesEmpty) rr + Empty else rr
+              val rr2 = if (r1.acceptsEmpty && r2.acceptsEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
       }
@@ -431,7 +434,7 @@ object Rx {
       val (r1, r2) = pair
       pair match {
         case (Phi, _) => Phi
-        case (Empty, r2) => if (r2.matchesEmpty) Phi else Empty
+        case (Empty, r2) => if (r2.acceptsEmpty) Phi else Empty
         case (_, Phi) => r1
         case (r1, r2) =>
           env.get(pair) match {
@@ -448,7 +451,7 @@ object Rx {
               def f(cc: (Char, Char)): Rx =
                 Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
               val rr = Rx.choice(alpha.map(f).toList)
-              val rr2 = if (r1.matchesEmpty && !r2.matchesEmpty) rr + Empty else rr
+              val rr2 = if (r1.acceptsEmpty && !r2.acceptsEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
       }
@@ -462,8 +465,8 @@ object Rx {
       pair match {
         case (r1, Phi) => r1
         case (Phi, r2) => r2
-        case (Empty, r2) if !r2.matchesEmpty => r2 + Empty
-        case (r1, Empty) if !r1.matchesEmpty => r1 + Empty
+        case (Empty, r2) if !r2.acceptsEmpty => r2 + Empty
+        case (r1, Empty) if !r1.acceptsEmpty => r1 + Empty
         case (r1, r2) =>
           env.get(pair) match {
             case Some(res) =>
@@ -474,7 +477,7 @@ object Rx {
               def f(cc: (Char, Char)): Rx =
                 Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
               val rr = Rx.choice(alpha.map(f).toList)
-              val rr2 = if (r1.matchesEmpty ^ r2.matchesEmpty) rr + Empty else rr
+              val rr2 = if (r1.acceptsEmpty ^ r2.acceptsEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
       }

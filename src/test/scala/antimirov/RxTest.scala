@@ -10,7 +10,7 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
 
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
-      .withMinSuccessfulTests(100)
+      .withMinSuccessfulTests(1000)
       //.withPropFilter(Some("regression"))
 
   //override def scale: Long = 10L

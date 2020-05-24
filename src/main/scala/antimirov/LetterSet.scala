@@ -159,6 +159,14 @@ class LetterSet(private val array: Array[Char]) { lhs =>
   def maxOption: Option[Char] =
     if (array.length == 0) None else Some(array.last)
 
+  def apply(c: Char): Boolean = contains(c)
+
+  def intersects(rhs: LetterSet): Boolean =
+    LetterSet.diff(lhs, rhs).exists {
+      case Diff.Both(_) => true
+      case _ => false
+    }
+
   def contains(c: Char): Boolean = {
     val n = Arrays.binarySearch(array, c)
     (n >= 0) || (-(n + 1) % 2 == 1)
