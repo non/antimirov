@@ -1,0 +1,28 @@
+things to do:
+
+ * scalac flags
+ * set up scala.js
+ * publishing, etc.
+ * mdoc readme, etc.
+ * copying file
+ * standardize DSL/API
+ * standardize escaping stuff
+ * rename Cat to Concat
+ * add pow support
+ * add repetition support
+ * experiment with reifying +, ?, etc.
+ * experiment with "flat" choice/concat
+ * add NFA/DFA stuff
+ * experiment with canonicalization using partialDeriv
+ * try to integrate inclusion stuff
+ * benchmark accepts method, NFA, DFA, etc.
+ * consider adding Ex (sub-pattern matching)
+ * add subprojects with extra deps:
+   - antimirov-scalacheck
+   - antimirov-kronecker
+   - antimirov-spire
+   - antimirov-cats
+   - etc.
+ * add generic version of Rx
+ * experiment with "modular" Rx
+ * consider tightening support to "strict" unicode
