@@ -2,14 +2,13 @@ package antimirov
 
 import java.lang.Double.isNaN
 import java.util.regex.{Pattern => JavaPattern}
-import scala.collection.immutable.Queue
 import scala.util.matching.{Regex => ScalaRegex}
 
 sealed abstract class Rx { lhs =>
 
   import Rx._
 
-  lazy val firstRanges: Stream[(Char, Char)] = {
+  lazy val firstRanges: LazyStream[(Char, Char)] = {
     def recur(r: Rx): Iterator[(Char, Char)] =
       r match {
         case Phi => Iterator.empty
@@ -24,20 +23,20 @@ sealed abstract class Rx { lhs =>
         case Star(r) => recur(r)
         case Var(_) => sys.error("!")
       }
-    recur(this).toStream
+    LazyStream.fromIterator(recur(this))
   }
 
   def rejects(s: String): Boolean =
     !accepts(s)
 
   def accepts(s: String): Boolean = {
-    def recur(r: Rx, i: Int): Stream[Unit] =
+    def recur(r: Rx, i: Int): Iterator[Unit] =
       if (i >= s.length) {
-        if (r.matchesEmpty) Stream(()) else Stream.empty
+        if (r.matchesEmpty) Iterator(()) else Iterator.empty
       } else {
-        r.partialDeriv(s.charAt(i)).toStream.flatMap(recur(_, i + 1))
+        r.partialDeriv(s.charAt(i)).iterator.flatMap(recur(_, i + 1))
       }
-    recur(this, 0).nonEmpty
+    recur(this, 0).hasNext
   }
 
   def +(rhs: Rx): Rx =
@@ -93,13 +92,11 @@ sealed abstract class Rx { lhs =>
         case (r1, r2) if r1.isPhi != r2.isPhi => false
         case _ if env(pair) => true
         case (r1, r2) =>
-          val (ranges1, ranges2) = (r1.firstRanges, r2.firstRanges)
-
-          val alpha: Stream[(Boolean, Char)] =
-            LetterSet.diff(ranges1.iterator, ranges2.iterator).map {
+          val alpha: Iterator[(Boolean, Char)] =
+            LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator).map {
               case Diff.Both((c, _)) => (true, c)
               case _ => (false, '\u0000')
-            }.toStream
+            }
           val env2 = env + pair
           alpha.forall { case (ok, c) =>
             ok && recur(env2, (r1.deriv(c), r2.deriv(c)))
@@ -232,6 +229,11 @@ sealed abstract class Rx { lhs =>
     }
 
   def resolve(x: Int): Rx = {
+
+    // cartesian product
+    def cart(xs: List[Rx], ys: List[Rx]): List[Rx] =
+      for { x <- xs; y <- ys } yield x * y
+
     def recur(r: Rx, x: Int): (List[Rx], List[Rx]) =
       r match {
         case v @ Var(y) =>
@@ -256,6 +258,17 @@ sealed abstract class Rx { lhs =>
   // +1 means (lhs > rhs) means (lhs supsersetOf rhs)
   // NaN means none of the above
   def partialCompare(rhs: Rx): Double = {
+
+    // operation table
+    //    -1  0 +1 Na
+    // -1 -1 -1 Na Na
+    //  0 -1  0 +1 Na
+    // +1 Na +1 +1 Na
+    // Na Na Na Na Na
+    def acc(x: Double, y: Double): Double =
+      if (x == 0.0 || Math.signum(x) == Math.signum(y)) y
+      else if (y == 0.0) x
+      else Double.NaN
 
     def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Double =
       pair match {
@@ -283,8 +296,7 @@ sealed abstract class Rx { lhs =>
             }
 
           var alpha: List[Char] = Nil
-          val (ranges1, ranges2) = (lhs.firstRanges, rhs.firstRanges)
-          val diffIt = LetterSet.diff(ranges1.iterator, ranges2.iterator)
+          val diffIt = LetterSet.diff(lhs.firstRanges.iterator, rhs.firstRanges.iterator)
           while (diffIt.hasNext) {
             diffIt.next match {
               case Diff.Both((c, _)) =>
@@ -379,7 +391,7 @@ object Rx {
   case object Phi extends Rx // matches nothing
   case object Empty extends Rx // matches empty string ("")
   case class Letter(c: Char) extends Rx // single character
-  case class Letters(ls: LetterSet) extends Rx // single character
+  case class Letters(ls: LetterSet) extends Rx // single character, one of a set
   case class Choice(r1: Rx, r2: Rx) extends Rx // either
   case class Cat(r1: Rx, r2: Rx) extends Rx // concatenation
   case class Star(r: Rx) extends Rx // kleene star
@@ -397,19 +409,15 @@ object Rx {
             case Some(res) =>
               res
             case None =>
-              var alpha: List[(Char, Char)] = Nil
-              val diffIt = LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator)
-              while (diffIt.hasNext) {
-                diffIt.next match {
-                  case Diff.Both(pair) => alpha = pair :: alpha
-                  case _ => ()
+              val alpha: Iterator[(Char, Char)] =
+                LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator).collect {
+                  case Diff.Both(pair) => pair
                 }
-              }
 
               val env2 = env.updated(pair, Var(cnt))
               def f(cc: (Char, Char)): Rx =
                 Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
-              val rr = Rx.choice(alpha.iterator.map(f).toList)
+              val rr = Rx.choice(alpha.map(f).toList)
               val rr2 = if (r1.matchesEmpty && r2.matchesEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
@@ -430,19 +438,16 @@ object Rx {
             case Some(res) =>
               res
             case None =>
-              var alpha: List[(Char, Char)] = Nil
-              val diffIt = LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator)
-              while(diffIt.hasNext) {
-                diffIt.next match {
-                  case Diff.Both(pair) => alpha = pair :: alpha
-                  case Diff.Left(pair) => alpha = pair :: alpha
-                  case Diff.Right(_) => ()
+              val alpha: Iterator[(Char, Char)] =
+                LetterSet.diff(r1.firstRanges.iterator, r2.firstRanges.iterator).collect {
+                  case Diff.Both(pair) => pair
+                  case Diff.Left(pair) => pair
                 }
-              }
+
               val env2 = env.updated(pair, Var(cnt))
               def f(cc: (Char, Char)): Rx =
                 Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
-              val rr = Rx.choice(alpha.iterator.map(f).toList)
+              val rr = Rx.choice(alpha.map(f).toList)
               val rr2 = if (r1.matchesEmpty && !r2.matchesEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
@@ -468,7 +473,7 @@ object Rx {
               val env2 = env.updated(pair, Var(cnt))
               def f(cc: (Char, Char)): Rx =
                 Rx(cc) * recur(cnt + 1, env2, (r1.deriv(cc._1), r2.deriv(cc._1)))
-              val rr = Rx.choice(alpha.iterator.map(f).toList)
+              val rr = Rx.choice(alpha.map(f).toList)
               val rr2 = if (r1.matchesEmpty ^ r2.matchesEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
@@ -476,19 +481,4 @@ object Rx {
     }
     recur(1, Map.empty, (r1, r2))
   }
-
-  // cartesian product
-  def cart(xs: List[Rx], ys: List[Rx]): List[Rx] =
-    for { x <- xs; y <- ys } yield x * y
-
-  // operation table
-  //    -1  0 +1 Na
-  // -1 -1 -1 Na Na
-  //  0 -1  0 +1 Na
-  // +1 Na +1 +1 Na
-  // Na Na Na Na Na
-  def acc(x: Double, y: Double): Double =
-    if (x == 0.0 || Math.signum(x) == Math.signum(y)) y
-    else if (y == 0.0) x
-    else Double.NaN
 }

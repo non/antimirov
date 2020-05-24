@@ -56,7 +56,7 @@ object Parser {
         case Some(cc) if c == cc =>
           ()
         case o =>
-          val x = o.getOrElse("eof")
+          val x = o.map(_.toString).getOrElse("eof")
           sys.error(s"at position $i, expected '$c' but got '$x'")
       }
 

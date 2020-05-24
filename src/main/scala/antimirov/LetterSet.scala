@@ -1,6 +1,5 @@
 package antimirov
 
-import java.lang.Double.isNaN
 import java.util.Arrays
 import scala.collection.mutable
 import scala.collection.immutable.NumericRange
@@ -352,7 +351,7 @@ class LetterSet(private val array: Array[Char]) { lhs =>
       while (i < xs.length || j < ys.length) {
         if (i < xs.length && (j >= ys.length || xs(i) <= ys(j))) {
           if (xs(i) <= (end + 1)) {
-            end = Integer.max(end, xs(i + 1)).toChar
+            end = Integer.max(end.toInt, xs(i + 1).toInt).toChar
           } else {
             buf.append(start)
             buf.append(end)
@@ -362,7 +361,7 @@ class LetterSet(private val array: Array[Char]) { lhs =>
           i += 2
         } else {
           if (ys(j) <= (end + 1)) {
-            end = Integer.max(end, ys(j + 1)).toChar
+            end = Integer.max(end.toInt, ys(j + 1).toInt).toChar
           } else {
             buf.append(start)
             buf.append(end)
@@ -473,7 +472,7 @@ object LetterSet {
               Diff.Right((y1, (x1 - 1).toChar))
             }
           } else { /* x1 = y1 */
-            val end = Integer.min(x2, y2).toChar
+            val end = Integer.min(x2.toInt, y2.toInt).toChar
             lhs =
               if (x2 > end) ((end + 1).toChar, x2)
               else if (it1.hasNext) it1.next
