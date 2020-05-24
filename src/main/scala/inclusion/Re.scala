@@ -59,7 +59,6 @@ object Re {
   def runInclusion(r1: Re, r2: Re): Inclusion =
     incFull(Set.empty, r1, r2)._1
 
-  import Included._
   import Inclusion._
 
   def incFull(m: Set[(Re, Re)], lhs: Re, rhs: Re): (Inclusion, Set[(Re, Re)]) =
