@@ -12,22 +12,37 @@ object Util {
       Prop(lhs === rhs) :| s"/$lhs/ === /$rhs/"
   }
 
+  def timer[A](name: String)(body: => A): A = {
+    //val _: A = body // warmup
+    val t0 = System.nanoTime()
+    val a1: A = body // real
+    val t = (System.nanoTime() - t0) / 1000000.0
+    val s = a1.toString
+    val limit = 20
+    if (s.length >= limit) {
+      println(s"$name took $t ms (${s.substring(0, limit)}...)")
+    } else {
+      println(s"$name took $t ms ($s)")
+    }
+    a1
+  }
+
   import java.util.concurrent.{Callable, ForkJoinPool, FutureTask}
 
   val pool = new ForkJoinPool()
 
-  def timed(label: => String, warnMs: Long, errorMs: Long)(body: => Prop): Prop = {
+  def timed(label: => String, warnMs: Long, abortMs: Long, failOnAbort: Boolean, body: => Prop): Prop = {
 
     val task = new FutureTask(new Callable[Prop] { def call(): Prop = body })
     pool.execute(task)
 
     val start = System.nanoTime()
     val warnT = start + warnMs * 1000000L
-    val errorT = start + errorMs * 1000000L
+    val abortT = start + abortMs * 1000000L
 
     var result: Option[Prop] = None
     var t0 = start
-    while (!task.isDone && t0 < errorT) {
+    while (!task.isDone && t0 < abortT) {
       Thread.sleep(0L, 100000)
       val t1 = System.nanoTime()
       t0 = t1
@@ -43,12 +58,13 @@ object Util {
     val duration = (now - start).toDouble / 1000000.0
 
     if (result.isEmpty) {
-      println(s"FAIL {$label} failed to finish within ${errorMs}ms")
+      val word = if (failOnAbort) "FAIL" else "STOP"
+      println(s"$word {$label} failed to finish within ${abortMs}ms")
     } else if (now >= warnT) {
       println("WARN {%s} took %.1fms (longer than %dms)".format(label, duration, warnMs))
     }
 
-    result.getOrElse(false)
+    result.getOrElse(!failOnAbort)
   }
 
   def stringsFromRx(r: Rx): Option[Gen[String]] = {
@@ -69,6 +85,14 @@ object Util {
         case Rx.Choice(x, y) =>
           val (n, s1) = s0.long
           if (n < 0L) recur(x, s1, sb0) else recur(y, s1, sb0)
+        case r @ Rx.Repeat(x, m, n) =>
+          if (m > 0) {
+            recur(Rx.Concat(x, Rx.Repeat(x, m - 1, n - 1)), s0, sb0)
+          } else if (n > 0) {
+            recur(Rx.Choice(Rx.Empty, Rx.Concat(x, Rx.Repeat(x, 0, n - 1))), s0, sb0)
+          } else {
+            (s0, sb0)
+          }
         case s @ Rx.Star(r) =>
           val (n, s1) = s0.long
           if (n < 0L) {
@@ -81,7 +105,7 @@ object Util {
     r match {
       case Rx.Var(_) =>
         sys.error("!")
-      case Rx.Phi =>
+      case _ if r.isPhi =>
         None
       case _ =>
         Some(Gen.choose(Long.MinValue, Long.MaxValue).map { n =>
@@ -92,8 +116,8 @@ object Util {
   }
 
   //val (cmin, cmax) = ('a', 'e')
-  //val (cmin, cmax) = ('a', 'z')
-  val (cmin, cmax) = (' ', '~')
+  val (cmin, cmax) = ('a', 'z')
+  //val (cmin, cmax) = (' ', '~')
   //val (cmin, cmax) = (Char.MinValue, Char.MaxValue)
 
   val alphabet: LetterSet =
@@ -127,7 +151,12 @@ object Util {
       lazy val g = f(depth - 1)
       Gen.frequency(
         1 -> Gen.const(Rx.Phi),
-        //3 -> Gen.const(U),
+        3 -> Gen.const(U),
+        2 -> (for {
+          x <- g
+          m <- Gen.choose(0, 2)
+          n <- Gen.choose(1, 3)
+        } yield x.repeat(m, Integer.max(m, n))),
         10 -> Gen.const(Rx.Empty),
         30 -> genLiteral,
         60 -> (for { x <- genSym; y <- g } yield x *: y),
@@ -154,34 +183,40 @@ trait TimingProperties { self: Properties =>
 
   import Util.timed
 
-  //val scale = 10
+  def enableTiming: Boolean = true
+  def failOnAbort: Boolean = true
+
   def scale: Long = 10
-
   def warnMs: Long = 50L * scale
-  def errorMs: Long = 100L * scale
-
-  //val (warnMs, errorMs) = (50L * scale, 100L * scale)
-
-  // def timedProp[A](name: String, ga: Gen[A])(f: A => Prop): Unit =
-  //   self.property(name) = forAll(ga)(f)
-  // def timedProp[A, B](name: String, ga: Gen[A], gb: Gen[B])(f: (A, B) => Prop): Unit =
-  //   self.property(name) = forAll(ga, gb)(f)
-  // def timedProp[A, B, C](name: String, ga: Gen[A], gb: Gen[B], gc: Gen[C])(f: (A, B, C) => Prop): Unit =
-  //   self.property(name) = forAll(ga, gb, gc)(f)
+  def abortMs: Long = 100L * scale
 
   def timedProp[A](name: String, ga: Gen[A])(f: A => Prop): Unit = {
     self.property(name) =
-      forAll(ga)(a => timed(s"$name : $a", warnMs, errorMs)(f(a)))
+      if (enableTiming) {
+        forAll(ga)(a => timed(s"$name : $a", warnMs, abortMs, failOnAbort, f(a)))
+      } else {
+        forAll(ga)(f)
+      }
     ()
   }
+
   def timedProp[A, B](name: String, ga: Gen[A], gb: Gen[B])(f: (A, B) => Prop): Unit = {
     self.property(name) =
-      forAll(ga, gb)((a, b) => timed(s"$name : $a : $b", warnMs, errorMs)(f(a, b)))
+      if (enableTiming) {
+        forAll(ga, gb)((a, b) => timed(s"$name : $a : $b", warnMs, abortMs, failOnAbort, f(a, b)))
+      } else {
+        forAll(ga, gb)(f)
+      }
     ()
   }
+
   def timedProp[A, B, C](name: String, ga: Gen[A], gb: Gen[B], gc: Gen[C])(f: (A, B, C) => Prop): Unit = {
     self.property(name) =
-      forAll(ga, gb, gc)((a, b, c) => timed(s"$name : $a : $b : $c", warnMs, errorMs)(f(a, b, c)))
+      if (enableTiming) {
+        forAll(ga, gb, gc)((a, b, c) => timed(s"$name : $a : $b : $c", warnMs, abortMs, failOnAbort, f(a, b, c)))
+      } else {
+        forAll(ga, gb, gc)(f)
+      }
     ()
   }
 }

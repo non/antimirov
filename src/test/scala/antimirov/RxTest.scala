@@ -10,10 +10,12 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
 
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
-      .withMinSuccessfulTests(10)
-      //.withPropFilter(Some("timing"))
+      .withMinSuccessfulTests(1000)
+      //.withPropFilter(Some("regression"))
 
-  //override def scale: Long = 10L
+  override def scale: Long = 20L
+  override def enableTiming = true
+  override def failOnAbort = false
 
   timedProp("regex accepts string", genRxAndStr) { case (r, lst) =>
     lst.forall(r.accepts)
@@ -89,13 +91,19 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     Claim(xyy >= x) :| s"$xyy >= $x"
   }
 
-  property("regression") = {
-    val x = Rx('\ud569') + (Rx('\u3244') * (Rx('\u7caa') + Rx('\u9d0a') + Rx('\ud0cc')))
-    val y = (Rx(LetterSet.Full).star + Rx("\u0ee5\uc174") * (Rx('\u415a') + Rx('\ubfdc'))).star
-    val lhs = (x + y).star
-    val rhs = x.star + y.star
-    Prop(lhs >= rhs)
-  }
+  // property("regression") = {
+  //   val x = Rx.parse("am[a-z]*")
+  //   val y = Rx.parse("ik[a-z]*|ge")
+  //   val z = Rx.parse("qcsga")
+  // 
+  //   val lhs = x * (y + z)
+  //   val rhs = (x * y) + (x * z)
+  // 
+  //   println(s"lhs = $lhs")
+  //   println(s"rhs = $rhs")
+  // 
+  //   timer("dist")(lhs =?= rhs)
+  // }
 
   timedProp("U - (U - x) = x", genRx) { x =>
     (U - (U - x)) =?= x
@@ -176,20 +184,6 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
   //     val good = data.substring(0, n)
   //     val long = data.substring(0, n + 1)
   //
-  //     def timer[A](name: String)(body: => A): Unit = {
-  //       val a0: A = body // warmup
-  //       val t0 = System.nanoTime()
-  //       val a1: A = body // real
-  //       val t = (System.nanoTime() - t0) / 1000000.0
-  //       require(a0 == a1)
-  //       val s = a1.toString
-  //       val limit = 20
-  //       if (s.length >= limit) {
-  //         println(s"$name took $t ms (${s.substring(0, limit)}...)")
-  //       } else {
-  //         println(s"$name took $t ms ($s)")
-  //       }
-  //     }
   //
   //     println(s"n=$n")
   //     timer(s" - hex1($n): r <= U")(rx <= Rx.Universe)
@@ -211,15 +205,15 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
       Prop(lhs == rhs) :| s"disagreement for '$s' :: ${r.repr} -> $lhs != $rhs"
     }.foldLeft(Prop(true))(_ && _)
 
-  timedProp("matches java", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
-    val (px, py) = (x.toJava, y.toJava)
-    val lst = lstx | lsty
-    comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
-  }
-
-  timedProp("matches scala", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
-    val (px, py) = (x.toScala.pattern, y.toScala.pattern)
-    val lst = lstx | lsty
-    comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
-  }
+  // timedProp("matches java", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
+  //   val (px, py) = (x.toJava, y.toJava)
+  //   val lst = lstx | lsty
+  //   comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
+  // }
+  // 
+  // timedProp("matches scala", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
+  //   val (px, py) = (x.toScala.pattern, y.toScala.pattern)
+  //   val lst = lstx | lsty
+  //   comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
+  // }
 }

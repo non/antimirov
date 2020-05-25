@@ -307,6 +307,8 @@ abstract class LetterSetTesting(name: String) extends Properties(name) {
       val rhs = (w | x | y | z)
       Claim(lhs == rhs)
     }
+
+  // TODO: test venn
 }
 
 object LetterSetTestAlpha extends LetterSetTesting("LetterSet(alpha)") {

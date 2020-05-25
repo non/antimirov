@@ -2,6 +2,7 @@ package antimirov
 
 import java.lang.Double.isNaN
 import java.util.regex.{Pattern => JavaPattern}
+import scala.collection.mutable
 import scala.util.matching.{Regex => ScalaRegex}
 
 sealed abstract class Rx { lhs =>
@@ -20,6 +21,7 @@ sealed abstract class Rx { lhs =>
         LetterSet.venn(r1.firstSet, r2.firstSet).map(_.value)
       case Concat(r1, _) => r1.firstSet
       case Star(r) => r.firstSet
+      case Repeat(r, _, _) => r.firstSet
       case Var(_) => sys.error("!")
     }
 
@@ -70,6 +72,29 @@ sealed abstract class Rx { lhs =>
       case _ => Star(this)
     }
 
+  def pow(k: Int): Rx = {
+    def loop(term: Rx, prod: Rx, i: Int): Rx =
+      if (i <= 0) Rx.empty
+      else if (i == 1) term * prod
+      else {
+        val p = if (i % 2 == 1) term * prod else prod
+        loop(term * term, p, i / 2)
+      }
+    loop(this, Rx.empty, k)
+  }
+
+  def repeat(n: Int): Rx =
+    this match {
+      case Phi | Empty => this
+      case _ => Repeat(this, n, n)
+    }
+
+  def repeat(m: Int, n: Int): Rx =
+    this match {
+      case Phi | Empty => this
+      case _ => Repeat(this, m, n)
+    }
+
   def &(rhs: Rx): Rx =
     Rx.intersect(lhs, rhs)
 
@@ -83,7 +108,8 @@ sealed abstract class Rx { lhs =>
     Rx.difference(Rx.Universe, this)
 
   def equiv(rhs: Rx): Boolean = {
-    def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Boolean =
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
+    def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Boolean = {
       pair match {
         case (r1, r2) if r1.acceptsEmpty != r2.acceptsEmpty => false
         case (r1, r2) if r1.isPhi != r2.isPhi => false
@@ -93,9 +119,12 @@ sealed abstract class Rx { lhs =>
           val alpha = LetterSet.venn(r1.firstSet, r2.firstSet)
           alpha.forall(_.isBoth) && alpha.forall { d =>
             val c = d.value.minOption.get
-            recur(env2, (r1.deriv(c), r2.deriv(c)))
+            val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
+            val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
+            recur(env2, (d1, d2))
           }
       }
+    }
     recur(Set.empty, (lhs, rhs))
   }
 
@@ -146,6 +175,7 @@ sealed abstract class Rx { lhs =>
         case Letters(cs) if cs.isFull => "."
         case Letters(cs) => cs.repr
         case Star(r) => recur(r, true) + "*"
+        case Repeat(r, m, n) => recur(r, true) + s"{$m,$n}"
         case c @ Choice(_, _) =>
           val s = choices(c).map(recur(_, false)).mkString("|")
           if (parens) s"($s)" else s
@@ -170,6 +200,9 @@ sealed abstract class Rx { lhs =>
         case Star(Letter(c)) => s"$c.star"
         case Star(Letters(cs)) => s"$cs.star"
         case Star(r) => s"(${recur(r)}).star"
+        case Repeat(Letter(c), m, n) => s"$c{$m,$n}"
+        case Repeat(Letters(cs), m, n) => s"$cs{$m,$n}"
+        case Repeat(r, m, n) => s"(${recur(r)}){$m,$n}"
         case Var(x) => "$" + x.toString
       }
     recur(this)
@@ -185,6 +218,7 @@ sealed abstract class Rx { lhs =>
     this match {
       case Phi => true
       case Empty | Letter(_) | Letters(_) | Star(_) | Var(_) => false
+      case Repeat(r, _, _) => r.isPhi
       case Choice(r1, r2) => r1.isPhi && r2.isPhi
       case Concat(r1, r2) => r1.isPhi || r2.isPhi
     }
@@ -192,7 +226,7 @@ sealed abstract class Rx { lhs =>
   def isEmpty: Boolean =
     this match {
       case Empty => true
-      case Phi | Letter(_) | Letters(_) | Star(_) | Var(_) => false
+      case Phi | Letter(_) | Letters(_) | Star(_) | Repeat(_, _, _) | Var(_) => false
       case Choice(r1, r2) => r1.isEmpty && r2.isEmpty
       case Concat(r1, r2) => r1.isEmpty && r2.isEmpty
     }
@@ -201,6 +235,7 @@ sealed abstract class Rx { lhs =>
     this match {
       case Empty | Star(_) => true
       case Phi | Letter(_) | Letters(_) => false
+      case Repeat(r, m, _) => m == 0 || r.acceptsEmpty
       case Choice(r1, r2) => r1.acceptsEmpty || r2.acceptsEmpty
       case Concat(r1, r2) => r1.acceptsEmpty && r2.acceptsEmpty
       case Var(_) => sys.error("!")
@@ -220,6 +255,14 @@ sealed abstract class Rx { lhs =>
       case Letter(_) | Letters(_) => Set.empty
       case Choice(r1, r2) => r1.partialDeriv(x) | r2.partialDeriv(x)
       case Star(r) => r.partialDeriv(x).filter(_ != Phi).map(_ * this)
+      case Repeat(r, m, n) =>
+        val s1 = r.partialDeriv(x).filter(_ != Phi)
+        if (s1.isEmpty) {
+          Set.empty
+        } else {
+          val rr = if (n <= 1) Empty else Repeat(r, Integer.max(0, m - 1), n - 1)
+          s1.map(_ * rr)
+        }
       case Concat(r1, r2) =>
         val s1 = r1.partialDeriv(x).map(_ * r2)
         if (r1.acceptsEmpty) s1 | r2.partialDeriv(x) else s1
@@ -246,7 +289,8 @@ sealed abstract class Rx { lhs =>
         case r =>
           (Nil, List(r))
       }
-    val (rs, bs) = recur(this, x)
+
+    val (rs, bs) = recur(this, x)//.result
     Rx.choice(rs).star * Rx.choice(bs)
   }
 
@@ -266,6 +310,8 @@ sealed abstract class Rx { lhs =>
       if (x == 0.0 || Math.signum(x) == Math.signum(y)) y
       else if (y == 0.0) x
       else Double.NaN
+
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
 
     def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Double =
       pair match {
@@ -291,7 +337,7 @@ sealed abstract class Rx { lhs =>
             case _ => 0.0
           }
 
-          val alpha = LetterSet.venn(lhs.firstSet, rhs.firstSet).iterator
+          val alpha = LetterSet.venn(lhs.firstSet, rhs.firstSet)
           val diffIt = alpha.iterator
           while (diffIt.hasNext) {
             diffIt.next match {
@@ -309,7 +355,9 @@ sealed abstract class Rx { lhs =>
           val alphaIt = alpha.iterator
           while (alphaIt.hasNext && !isNaN(res)) {
             val c = alphaIt.next.value.minOption.get
-            val x = recur(env2, (lhs.deriv(c), rhs.deriv(c)))
+            val d1 = derivCache.getOrElseUpdate((lhs, c), lhs.deriv(c))
+            val d2 = derivCache.getOrElseUpdate((rhs, c), rhs.deriv(c))
+            val x = recur(env2, (d1, d2))
             res = acc(res, x)
           }
           res
@@ -380,10 +428,12 @@ object Rx {
   case class Letters(ls: LetterSet) extends Rx // single character, one of a set
   case class Choice(r1: Rx, r2: Rx) extends Rx // either
   case class Concat(r1: Rx, r2: Rx) extends Rx // concatenation
+  case class Repeat(r: Rx, m: Int, n: Int) extends Rx // repetition, n > 0, n >= m
   case class Star(r: Rx) extends Rx // kleene star
   case class Var(x: Int) extends Rx // used internally
 
   def intersect(r1: Rx, r2: Rx): Rx = {
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
     def recur(cnt: Int, env: Map[(Rx, Rx), Rx], pair: (Rx, Rx)): Rx = {
       val (r1, r2) = pair
       pair match {
@@ -401,7 +451,9 @@ object Rx {
               val env2 = env.updated(pair, Var(cnt))
               def f(cs: LetterSet): Rx = {
                 val c = cs.minOption.get
-                Rx(cs) * recur(cnt + 1, env2, (r1.deriv(c), r2.deriv(c)))
+                val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
+                val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
+                Rx(cs) * recur(cnt + 1, env2, (d1, d2))
               }
               val rr = Rx.choice(alpha.map(f))
               val rr2 = if (r1.acceptsEmpty && r2.acceptsEmpty) rr + Empty else rr
@@ -413,6 +465,7 @@ object Rx {
   }
 
   def difference(r1: Rx, r2: Rx): Rx = {
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
     def recur(cnt: Int, env: Map[(Rx, Rx), Rx], pair: (Rx, Rx)): Rx = {
       val (r1, r2) = pair
       pair match {
@@ -431,7 +484,9 @@ object Rx {
               val env2 = env.updated(pair, Var(cnt))
               def f(cs: LetterSet): Rx = {
                 val c = cs.minOption.get
-                Rx(cs) * recur(cnt + 1, env2, (r1.deriv(c), r2.deriv(c)))
+                val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
+                val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
+                Rx(cs) * recur(cnt + 1, env2, (d1, d2))
               }
               val rr = Rx.choice(alpha.map(f))
               val rr2 = if (r1.acceptsEmpty && !r2.acceptsEmpty) rr + Empty else rr
@@ -443,6 +498,7 @@ object Rx {
   }
 
   def xor(r1: Rx, r2: Rx): Rx = {
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
     def recur(cnt: Int, env: Map[(Rx, Rx), Rx], pair: (Rx, Rx)): Rx = {
       val (r1, r2) = pair
       pair match {
@@ -459,7 +515,9 @@ object Rx {
               val env2 = env.updated(pair, Var(cnt))
               def f(cs: LetterSet): Rx = {
                 val c = cs.minOption.get
-                Rx(cs) * recur(cnt + 1, env2, (r1.deriv(c), r2.deriv(c)))
+                val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
+                val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
+                Rx(cs) * recur(cnt + 1, env2, (d1, d2))
               }
               val rr = Rx.choice(alpha.map(f))
               val rr2 = if (r1.acceptsEmpty ^ r2.acceptsEmpty) rr + Empty else rr

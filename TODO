@@ -1,15 +1,14 @@
 things to do:
 
+ * test LetterSet.venn
  * publishing, etc.
  * mdoc readme, etc.
  * standardize DSL/API
- * add pow support
  * add repetition support
  * experiment with reifying +, ?, etc.
  * experiment with "flat" choice/concat
  * add NFA/DFA stuff
  * experiment with canonicalization using partialDeriv
- X try to integrate inclusion stuff
  * benchmark accepts method, NFA, DFA, etc.
  * consider adding Ex (sub-pattern matching)
  * add subprojects with extra deps:
