@@ -5,6 +5,9 @@ import java.util.regex.{Pattern => JavaPattern}
 import scala.collection.mutable
 import scala.util.matching.{Regex => ScalaRegex}
 
+/**
+ * Rx is a regular expression.
+ */
 sealed abstract class Rx { lhs =>
 
   import Rx._
@@ -95,6 +98,17 @@ sealed abstract class Rx { lhs =>
       case _ => Repeat(this, m, n)
     }
 
+  /**
+   * Attempt to put a regular expression in a canonical form.
+   *
+   * This is not guaranteed to be a "minimal" form (in fact it will
+   * often expand the size of the regex). However, two regular
+   * exprssions that are equal should have equivalent representations
+   * after canonicalization is performed.
+   */
+  def canonical: Rx =
+    Rx.canonicalize(this)
+
   def &(rhs: Rx): Rx =
     Rx.intersect(lhs, rhs)
 
@@ -173,7 +187,15 @@ sealed abstract class Rx { lhs =>
         case Var(x) => s"Var($x)"
         case Letter(c) => Chars.escape(c)
         case Letters(cs) if cs.isFull => "."
-        case Letters(cs) => cs.repr
+        case Letters(cs) =>
+          if (cs.size <= 32768) cs.repr
+          else {
+            val ccs = ~cs
+            ccs.ranges.map {
+              case (x, y) if x == y => LetterSet.escape(x)
+              case (x, y) => s"${LetterSet.escape(x)}-${LetterSet.escape(y)}"
+            }.mkString("[^", "", "]")
+          }
         case Star(r) => recur(r, true) + "*"
         case Repeat(r, m, n) if m == n => recur(r, true) + s"{$m}"
         case Repeat(r, m, n) => recur(r, true) + s"{$m,$n}"
@@ -288,7 +310,7 @@ sealed abstract class Rx { lhs =>
           (Nil, List(r))
       }
 
-    val (rs, bs) = recur(this, x)//.result
+    val (rs, bs) = recur(this, x)
     Rx.choice(rs).star * Rx.choice(bs)
   }
 
@@ -429,6 +451,34 @@ object Rx {
   case class Repeat(r: Rx, m: Int, n: Int) extends Rx // repetition, n > 0, n >= m
   case class Star(r: Rx) extends Rx // kleene star
   case class Var(x: Int) extends Rx // used internally
+
+  def canonicalize(r: Rx): Rx = {
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
+    def recur(cnt: Int, env: Map[Rx, Rx], r: Rx): Rx = {
+      r match {
+        case Phi => Phi
+        case Empty => Empty
+        case Star(r) => Star(r.canonical)
+        case _ =>
+          env.get(r) match {
+            case Some(res) =>
+              res
+            case None =>
+              val env2 = env.updated(r, Var(cnt))
+              def f(cs: LetterSet): Rx = {
+                val c = cs.minOption.get
+                val d = derivCache.getOrElseUpdate((r, c), r.deriv(c))
+                Rx(cs) * recur(cnt + 1, env2, d)
+              }
+              val set = r.firstSet.sortBy(s => (s.minOption, s.maxOption))
+              val r1 = Rx.choice(set.map(f))
+              val r2 = if (r.acceptsEmpty) r1 + Empty else r1
+              r2.resolve(cnt)
+          }
+      }
+    }
+    recur(1, Map.empty, r)
+  }
 
   def intersect(r1: Rx, r2: Rx): Rx = {
     val derivCache = mutable.Map.empty[(Rx, Char), Rx]

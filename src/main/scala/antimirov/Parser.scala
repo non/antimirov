@@ -102,7 +102,7 @@ object Parser {
         case Repeat2(sm, sn) =>
           val j = i + 3 + sm.length + sn.length
           ((sm.toInt, sn.toInt), j)
-        case _ => sys.error("!")
+        case _ => sys.error("invalid repetition")
       }
 
     def parseAtomic(i: Int): (Rx, Int) =

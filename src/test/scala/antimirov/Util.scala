@@ -154,14 +154,14 @@ object Util {
         3 -> Gen.const(U),
         2 -> (for {
           x <- g
-          m <- Gen.choose(0, 2)
-          n <- Gen.choose(1, 3)
+          m <- Gen.choose(0, 1)
+          n <- Gen.choose(1, 2)
         } yield x.repeat(m, Integer.max(m, n))),
         10 -> Gen.const(Rx.Empty),
         30 -> genLiteral,
         60 -> (for { x <- genSym; y <- g } yield x *: y),
-        20 -> (for { x <- g; y <- g } yield x + y),
-        10 -> (for { x <- g } yield x.star))
+        15 -> (for { x <- g; y <- g } yield x + y),
+        5 -> (for { x <- g } yield x.star))
     }
 
   lazy val f: Int => Gen[Rx] =

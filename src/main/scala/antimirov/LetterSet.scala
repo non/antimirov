@@ -76,6 +76,8 @@ import scala.collection.immutable.NumericRange
  */
 class LetterSet(private val array: Array[Char]) { lhs =>
 
+  import LetterSet.escape
+
   override def equals(that: Any): Boolean =
     that match {
       case ls: LetterSet => Arrays.equals(array, ls.array)
@@ -87,9 +89,6 @@ class LetterSet(private val array: Array[Char]) { lhs =>
 
   override def toString: String =
     repr
-
-  def escape(c: Char): String =
-    Chars.escape(c, Chars.RangeSpecial)
 
   def repr: String =
     ranges.map {
@@ -435,6 +434,9 @@ object LetterSet {
     }
     new LetterSet(buf.toArray)
   }
+
+  def escape(c: Char): String =
+    Chars.escape(c, Chars.RangeSpecial)
 
   def union(x: LetterSet, y: LetterSet): LetterSet =
     LetterSet.fromIterator(diff(x, y).map(_.value))
