@@ -92,10 +92,8 @@ lazy val root = project
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("."))
-//  .dependsOn(mc)
   .settings(name := "antimirov")
   .settings(antimirovSettings: _*)
-//  .settings(sourceGenerators in Compile += (sourceManaged in Compile).map(Boilerplate.gen).taskValue)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
     parallelExecution := false,
