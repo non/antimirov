@@ -144,7 +144,7 @@ object Util {
   val genBase: Gen[Rx] =
     Gen.lzy(Gen.frequency(
       2 -> genLiteral,
-      1 -> (for { x <- genSym; y <- genBase } yield x *: y)))
+      1 -> (for { x <- genSym; y <- genBase } yield Rx(x) * y)))
 
   def genRecur(depth: Int, f: Int => Gen[Rx]): Gen[Rx] =
     if (depth <= 0) genBase else {
@@ -159,7 +159,7 @@ object Util {
         } yield x.repeat(m, Integer.max(m, n))),
         10 -> Gen.const(Rx.Empty),
         30 -> genLiteral,
-        60 -> (for { x <- genSym; y <- g } yield x *: y),
+        60 -> (for { x <- genSym; y <- g } yield Rx(x) * y),
         15 -> (for { x <- g; y <- g } yield x + y),
         5 -> (for { x <- g } yield x.star))
     }

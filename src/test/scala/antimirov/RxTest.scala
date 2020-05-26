@@ -175,6 +175,12 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     }
   }
 
+  timedProp("x.pow(k) = x * x * ...", genSmallRx, Gen.choose(0, 4)) { (rx, k) =>
+    val lhs = rx.pow(k)
+    val rhs = (1 to k).map(_ => rx).foldLeft(Rx.empty)(_ * _)
+    lhs =?= rhs
+  }
+
   // property("timing") = {
   //   List(2, 4, 8, 16, 32, 64).forall { n =>
   //     val str = "[0-9a-f]" * n
@@ -205,15 +211,15 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
       Prop(lhs == rhs) :| s"disagreement for '$s' :: ${r.repr} -> $lhs != $rhs"
     }.foldLeft(Prop(true))(_ && _)
 
-  // timedProp("matches java", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
-  //   val (px, py) = (x.toJava, y.toJava)
-  //   val lst = lstx | lsty
-  //   comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
-  // }
-  // 
-  // timedProp("matches scala", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
-  //   val (px, py) = (x.toScala.pattern, y.toScala.pattern)
-  //   val lst = lstx | lsty
-  //   comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
-  // }
+  timedProp("matches java", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
+    val (px, py) = (x.toJava, y.toJava)
+    val lst = lstx | lsty
+    comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
+  }
+
+  timedProp("matches scala", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
+    val (px, py) = (x.toScala.pattern, y.toScala.pattern)
+    val lst = lstx | lsty
+    comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
+  }
 }

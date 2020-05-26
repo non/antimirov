@@ -12,35 +12,17 @@ sealed abstract class Rx { lhs =>
 
   import Rx._
 
-  lazy val firstSet: List[LetterSet] =
-    this match {
-      case Phi => Nil
-      case Empty => Nil
-      case Letter(c) => LetterSet(c) :: Nil
-      case Letters(cs) => cs :: Nil
-      case Choice(r1, r2) =>
-        LetterSet.venn(r1.firstSet, r2.firstSet).map(_.value)
-      case Concat(r1, r2) if r1.acceptsEmpty =>
-        LetterSet.venn(r1.firstSet, r2.firstSet).map(_.value)
-      case Concat(r1, _) => r1.firstSet
-      case Star(r) => r.firstSet
-      case Repeat(r, _, _) => r.firstSet
-      case Var(_) => sys.error("!")
-    }
-
-  def accepts(s: String): Boolean = {
-    def recur(r: Rx, i: Int): Iterator[Unit] =
-      if (i >= s.length) {
-        if (r.acceptsEmpty) Iterator(()) else Iterator.empty
-      } else {
-        r.partialDeriv(s.charAt(i)).iterator.flatMap(recur(_, i + 1))
-      }
-    recur(this, 0).hasNext
-  }
-
-  def rejects(s: String): Boolean =
-    !accepts(s)
-
+  /**
+   * Choice operator.
+   *
+   * The expression `x + y` (also written as `x | y`), means that
+   * either `x` or `y` (but not both) will be used in a given
+   * production. In regular expression syntax this is written as
+   * 'x|y'. This is also sometimes known as alternation.
+   *
+   * The operator is called `+` because it corresponds to addition in
+   * the Kleene algebra of regular expressions.
+   */
   def +(rhs: Rx): Rx =
     (lhs, rhs) match {
       case (x, y) if x == y => x
@@ -56,18 +38,33 @@ sealed abstract class Rx { lhs =>
   def |(rhs: Rx): Rx =
     lhs + rhs
 
-  def *:(prefix: Char): Rx =
-    Rx(prefix) * this
-
-  def :*(suffix: Char): Rx =
-    this * Rx(suffix)
-
+  /**
+   * Concatenation operator.
+   *
+   * The expression `x * y` means that `x` and then `y` will be used
+   * in a given production in that order. In regular expression syntax
+   * this is written as 'xy'.
+   *
+   * The operator is called `*` because it corresponds to
+   * multiplication in the Kleene algebra of regular expressions.
+   */
   def *(rhs: Rx): Rx =
     if (lhs == Phi || rhs == Phi) Phi
     else if (lhs == Empty) rhs
     else if (rhs == Empty) lhs
     else Concat(lhs, rhs)
 
+  /**
+   * Kleene star operator.
+   *
+   * The expression `x.star` means that `x` will be applied
+   * zero-or-more times. In regular expression syntax this would be
+   * written as 'x*'.
+   *
+   * Kleene star satisfies the self-referential relation:
+   *
+   *     x.star = Empty + (x * x.star)
+   */
   def star: Rx =
     this match {
       case Phi | Empty => Empty
@@ -75,28 +72,40 @@ sealed abstract class Rx { lhs =>
       case _ => Star(this)
     }
 
-  def pow(k: Int): Rx = {
-    def loop(term: Rx, prod: Rx, i: Int): Rx =
-      if (i <= 0) Rx.empty
-      else if (i == 1) term * prod
-      else {
-        val p = if (i % 2 == 1) term * prod else prod
-        loop(term * term, p, i / 2)
-      }
-    loop(this, Rx.empty, k)
-  }
+  /**
+   * Exponentiation operator.
+   *
+   * `x.pow(k)` is equivalent to `x * x *... * x` k times. This can be
+   * written in regular expression syntax as `x{k}`.
+   */
+  def pow(k: Int): Rx =
+    repeat(k)
+  //   def loop(term: Rx, prod: Rx, i: Int): Rx =
+  //     if (i <= 0) Rx.empty
+  //     else if (i == 1) term * prod
+  //     else {
+  //       val p = if (i % 2 == 1) term * prod else prod
+  //       loop(term * term, p, i / 2)
+  //     }
+  //   loop(this, Rx.empty, k)
+  // }
 
   def repeat(n: Int): Rx =
-    this match {
+    if (n <= 0) Rx.empty
+    else this match {
       case Phi | Empty => this
       case _ => Repeat(this, n, n)
     }
 
-  def repeat(m: Int, n: Int): Rx =
-    this match {
+  def repeat(m: Int, n: Int): Rx = {
+    require(m >= 0, s"$m >= 0 was false")
+    require(n >= m, s"$n >= $m was false")
+    if (n == 0) Rx.empty
+    else this match {
       case Phi | Empty => this
       case _ => Repeat(this, m, n)
     }
+  }
 
   /**
    * Attempt to put a regular expression in a canonical form.
@@ -120,6 +129,35 @@ sealed abstract class Rx { lhs =>
 
   def unary_~ : Rx =
     Rx.difference(Rx.Universe, this)
+
+  def accepts(s: String): Boolean = {
+    def recur(r: Rx, i: Int): Iterator[Unit] =
+      if (i >= s.length) {
+        if (r.acceptsEmpty) Iterator(()) else Iterator.empty
+      } else {
+        r.partialDeriv(s.charAt(i)).iterator.flatMap(recur(_, i + 1))
+      }
+    recur(this, 0).hasNext
+  }
+
+  def rejects(s: String): Boolean =
+    !accepts(s)
+
+  lazy val firstSet: List[LetterSet] =
+    this match {
+      case Phi => Nil
+      case Empty => Nil
+      case Letter(c) => LetterSet(c) :: Nil
+      case Letters(cs) => cs :: Nil
+      case Choice(r1, r2) =>
+        LetterSet.venn(r1.firstSet, r2.firstSet).map(_.value)
+      case Concat(r1, r2) if r1.acceptsEmpty =>
+        LetterSet.venn(r1.firstSet, r2.firstSet).map(_.value)
+      case Concat(r1, _) => r1.firstSet
+      case Star(r) => r.firstSet
+      case Repeat(r, _, _) => r.firstSet
+      case Var(_) => sys.error("!")
+    }
 
   def equiv(rhs: Rx): Boolean = {
     val derivCache = mutable.Map.empty[(Rx, Char), Rx]
@@ -197,8 +235,9 @@ sealed abstract class Rx { lhs =>
             }.mkString("[^", "", "]")
           }
         case Star(r) => recur(r, true) + "*"
-        case Repeat(r, m, n) if m == n => recur(r, true) + s"{$m}"
-        case Repeat(r, m, n) => recur(r, true) + s"{$m,$n}"
+        case Repeat(r, m, n) =>
+          val suffix = if (m == n) s"{$m}" else s"{$m,$n}"
+          "(" + recur(r, true) + suffix + ")"
         case c @ Choice(_, _) =>
           val s = choices(c).map(recur(_, false)).mkString("|")
           if (parens) s"($s)" else s
@@ -428,7 +467,7 @@ object Rx {
     else Letters(LetterSet(cs))
 
   def apply(s: String): Rx =
-    s.foldRight(Rx.lambda)(_ *: _)
+    s.foldRight(Rx.lambda)((c, r) => Letter(c) * r)
 
   def choice(rs: Iterable[Rx]): Rx =
     if (rs.isEmpty) Phi else rs.reduceLeft(_ + _)
