@@ -35,6 +35,9 @@ sealed abstract class Rx { lhs =>
       case _ => Choice(lhs, rhs)
     }
 
+  /**
+   * Alias for the choice operator.
+   */
   def |(rhs: Rx): Rx =
     lhs + rhs
 
@@ -80,16 +83,12 @@ sealed abstract class Rx { lhs =>
    */
   def pow(k: Int): Rx =
     repeat(k)
-  //   def loop(term: Rx, prod: Rx, i: Int): Rx =
-  //     if (i <= 0) Rx.empty
-  //     else if (i == 1) term * prod
-  //     else {
-  //       val p = if (i % 2 == 1) term * prod else prod
-  //       loop(term * term, p, i / 2)
-  //     }
-  //   loop(this, Rx.empty, k)
-  // }
 
+  /**
+   * Single-value repetition operator.
+   *
+   * This is an alias for pow.
+   */
   def repeat(n: Int): Rx =
     if (n <= 0) Rx.empty
     else this match {
@@ -97,6 +96,18 @@ sealed abstract class Rx { lhs =>
       case _ => Repeat(this, n, n)
     }
 
+  /**
+   * Repetition operator.
+   *
+   * This repeats the given regex for at least `m` times and no more
+   * than `n` times (so 0 <= m <= n). If n=0 this is equivalent to the
+   * empty string.
+   *
+   * This method is equivalent to m concatenations followed by (n - m)
+   * choice operations and concatenations, e.g.
+   *
+   *     x{3,5} = xxx(|x(|x))
+   */
   def repeat(m: Int, n: Int): Rx = {
     require(m >= 0, s"$m >= 0 was false")
     require(n >= m, s"$n >= $m was false")
@@ -118,18 +129,33 @@ sealed abstract class Rx { lhs =>
   def canonical: Rx =
     Rx.canonicalize(this)
 
+  /**
+   * Intersection operator.
+   */
   def &(rhs: Rx): Rx =
     Rx.intersect(lhs, rhs)
 
+  /**
+   * Difference operator.
+   */
   def -(rhs: Rx): Rx =
     Rx.difference(lhs, rhs)
 
+  /**
+   * Exclusive-or (XOR) operator.
+   */
   def ^(rhs: Rx): Rx =
     Rx.xor(lhs, rhs)
 
+  /**
+   * Complement (negation) operator.
+   */
   def unary_~ : Rx =
     Rx.difference(Rx.Universe, this)
 
+  /**
+   * Decide whether the regex accepts the string `s`.
+   */
   def accepts(s: String): Boolean = {
     def recur(r: Rx, i: Int): Iterator[Unit] =
       if (i >= s.length) {
@@ -140,9 +166,15 @@ sealed abstract class Rx { lhs =>
     recur(this, 0).hasNext
   }
 
+  /**
+   * Decide whether the regex rejects the string `s`.
+   */
   def rejects(s: String): Boolean =
     !accepts(s)
 
+  /**
+   *
+   */
   lazy val firstSet: List[LetterSet] =
     this match {
       case Phi => Nil
