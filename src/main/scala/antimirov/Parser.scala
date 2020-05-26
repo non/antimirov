@@ -9,8 +9,9 @@ union     := re "|" simple-re
 simple-re := concat | basic-re
 concat    := simple-re basic-re
 basic-re  := star | plus | atomic-re
-star      := atomic-re "*"
-plus      := atomic-re "+"
+star      := basic-re "*"
+plus      := basic-re "+"
+repeat    := basic-re "{" int "," int "}" | basic-re "{" int "}"
 atomic-re := group | "." | char | set
 group     := "(" re ")"
 char      := non-metacharacter | "\" escaped
@@ -36,6 +37,9 @@ object Parser {
   implicit class RxInterpolation(val sc: StringContext) {
     def rx(args: Any*): Rx = Parser.parse(sc.parts.head)
   }
+
+  val Repeat1 = """\{(0|[1-9][0-9]*)\}.*""".r
+  val Repeat2 = """\{(0|[1-9][0-9]*),(0|[1-9][0-9]*)\}.*""".r
 
   def fmap[A, B](pair: (A, Int))(f: A => B): (B, Int) =
     (f(pair._1), pair._2)
@@ -68,20 +72,38 @@ object Parser {
     def parseSimple(i: Int): (Rx, Int) = {
       val (rx0, j) = parseBasic(i)
       peek(j) match {
-        case Some('|') | Some(')') | None => (rx0, j)
-        case _ => fmap(parseSimple(j))(rx0 * _)
+        case Some('|') | Some(')') | None =>
+          (rx0, j)
+        case Some(c) =>
+          fmap(parseSimple(j))(rx0 * _)
       }
     }
 
     def parseBasic(i: Int): (Rx, Int) = {
+      def recur(rx: Rx, j: Int): (Rx, Int) =
+        peek(j) match {
+          case Some('+') => recur(rx * rx.star, j + 1)
+          case Some('*') => recur(rx.star, j + 1)
+          case Some('?') => recur(rx + Rx.empty, j + 1)
+          case Some('{') =>
+            val (rx1, k) = fmap(parseRepeat(j)) { case (m, n) => rx.repeat(m, n) }
+            recur(rx1, k)
+          case _ => (rx, j)
+        }
       val (rx, j) = parseAtomic(i)
-      peek(j) match {
-        case Some('+') => (rx * rx.star, j + 1)
-        case Some('*') => (rx.star, j + 1)
-        case Some('?') => (rx + Rx.empty, j + 1)
-        case _ => (rx, j)
-      }
+      recur(rx, j)
     }
+
+    def parseRepeat(i: Int): ((Int, Int), Int) =
+      s.substring(i) match {
+        case Repeat1(sm) =>
+          val j = i + 2 + sm.length
+          ((sm.toInt, sm.toInt), j)
+        case Repeat2(sm, sn) =>
+          val j = i + 3 + sm.length + sn.length
+          ((sm.toInt, sn.toInt), j)
+        case _ => sys.error("!")
+      }
 
     def parseAtomic(i: Int): (Rx, Int) =
       peek(i) match {

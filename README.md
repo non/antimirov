@@ -94,22 +94,32 @@ libraryDependencies += "org.spire-math" %%% "antimirov" % "0.0.1"
 
 ### Details
 
-TBD
+
 
 ### Known Issues
+
+The biggest issue with this library is that the problems are
+exponential in the general case. This means there are plenty of
+expressions for which Antimirov's operations (equality, inclusion,
+intersection, and so on) are prohibitively slow.
+
+Here's a list of other known problems:
 
     1. Antimirov doesn't preserve user-specified expression syntax
     2. Ranges are sometimes split unnecessarily
     3. Negative ranges (e.g. [^a-z]) are not generated internally
     4. Antimirov has no ability to simplify/canonicalize expressions
     5. Antimirov cannot (yet) check constant expressions at compile-time
-    6. Repetition (e.g. {3,5}) is not yet supported
-    7. Synthetic operators such as + and ? are not reified in the AST
-    8. There are probably still efficiency gains
+    6. Synthetic operators such as + and ? are not reified in the AST
 
 ### Future Work
 
-TBD
+Since the general problem is exponential, there is likely a lot of
+future work around chipping away at the margins: heuristics that cover
+most interesting regular expressions users are interested in.
+
+It would be interesting to see how many of Antimirov's features we can
+preserve if we allow extracting subgroup matches.
 
 ### Copyright and License
 

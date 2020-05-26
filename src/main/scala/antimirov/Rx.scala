@@ -175,6 +175,7 @@ sealed abstract class Rx { lhs =>
         case Letters(cs) if cs.isFull => "."
         case Letters(cs) => cs.repr
         case Star(r) => recur(r, true) + "*"
+        case Repeat(r, m, n) if m == n => recur(r, true) + s"{$m}"
         case Repeat(r, m, n) => recur(r, true) + s"{$m,$n}"
         case c @ Choice(_, _) =>
           val s = choices(c).map(recur(_, false)).mkString("|")
@@ -193,16 +194,13 @@ sealed abstract class Rx { lhs =>
       re match {
         case Phi => "ϕ"
         case Empty => "ε"
-        case Letter(c) => Chars.escape(c)
-        case Letters(cs) => cs.toString
+        case Letter(c) => s"Rx('${Chars.escape(c)}')"
+        case Letters(cs) => "Rx.parse(\"" + cs.toString + "\")"
         case Choice(r1, r2) => s"(${recur(r1)}+${recur(r2)})"
         case Concat(r1, r2) => s"(${recur(r1)}*${recur(r2)})"
-        case Star(Letter(c)) => s"$c.star"
-        case Star(Letters(cs)) => s"$cs.star"
-        case Star(r) => s"(${recur(r)}).star"
-        case Repeat(Letter(c), m, n) => s"$c{$m,$n}"
-        case Repeat(Letters(cs), m, n) => s"$cs{$m,$n}"
-        case Repeat(r, m, n) => s"(${recur(r)}){$m,$n}"
+        case Star(r) => s"${recur(r)}.star"
+        case Repeat(r, m, n) if m == n => s"${recur(r)}.repeat($m)"
+        case Repeat(r, m, n) => s"${recur(r)}.repeat($m,$n)"
         case Var(x) => "$" + x.toString
       }
     recur(this)
