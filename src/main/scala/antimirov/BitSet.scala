@@ -69,6 +69,9 @@ case class BitSet(size: Int, array: Array[Int]) { lhs =>
     }
   }
 
+  def copy(): BitSet =
+    BitSet(size, Arrays.copyOf(array, array.length))
+
   def clear(): Unit = {
     var i = 0
     while (i < array.length) {

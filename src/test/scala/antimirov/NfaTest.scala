@@ -23,8 +23,7 @@ object NfaTest extends Properties("NfaTest") with TimingProperties { self =>
  */
 
   timedProp("nfa accepts regex strings", genRxAndStr) { case (r, lst) =>
-    val nfa = Nfa.fromRx(r)
-    val c = CompressedNfa.fromNfa(nfa)
+    val c = Nfa.fromRx(r)
     lst.iterator.map { s =>
       val lhs = r.accepts(s)
       val rhs = c.accepts(s)
