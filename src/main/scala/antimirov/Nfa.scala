@@ -1,5 +1,34 @@
 package antimirov
 
+/**
+ * NFA stands for Non-deterministic finite-state automaton.
+ *
+ * NFAs allow non-determinism in their graphs: epsilon transitions
+ * which can be taken (or not taken) without any corresponding input.
+ * This means there are potentially many paths through an NFA which
+ * need to be explored.
+ *
+ * This NFA implementation is an optimized form that uses a bitset to
+ * represent the possible states we are in at any given time. When we
+ * read characters we compute a new bitset of all the possible states
+ * we could get to from any of our previous states. This means we
+ * never have to backtrack, at the cost of the overhead of computing
+ * these sets (rather than greedily following one path).
+ *
+ * The size of the NFA (n) is the number of NFA states it contains.
+ * Since our physical states are sets of n bits, this means that we
+ * could potentially have up to 2^n different bitsets (although in
+ * practice most of these are unreachable). When compiling an NFA into
+ * a DFA, we will need to reify each "reachable" bitset as its own DFA
+ * state, which again means that for n NFA states, we might have up to
+ * 2^n DFA states.
+ *
+ * We use LetterMap to determine which transition (if any) to take.
+ * This introduces a log(k) cost to each transition (where k is the
+ * number of distinct ranges in the LetterMap), but has the advantage
+ * that it is simple to implement and can handle even very large and
+ * complex ranges of character inputs.
+ */
 case class Nfa(
   size: Int,
   start: BitSet,
@@ -17,6 +46,9 @@ case class Nfa(
     s"Nfa($size, $start, $accept, $e)"
   }
 
+  /**
+   * Return true if (and only if) this NFA matches the given string.
+   */
   def accepts(s: String): Boolean = {
     var i = 0
     var st = start
@@ -30,9 +62,26 @@ case class Nfa(
     st intersects accept
   }
 
+  /**
+   * Return true if (and only if) this NFA does not match the given
+   * string.
+   */
   def rejects(s: String): Boolean =
     !accepts(s)
 
+  /**
+   * Given a bitset of current states and a character of input,
+   * compute the bitset of future states (if any).
+   *
+   * This method will return None when we failed to match the input,
+   * and will return Some(_) when we have a bitset of states to
+   * continue with. There is no check that the bitset is non-empty,
+   * although based on the NFA is constructed it should be impossible
+   * to end up with an empty bitset.
+   *
+   * (In any case, an empty bitset would not lead to bugs other than
+   * slower-than-necessary rejection of an input.)
+   */
   def follow(st0: BitSet, c: Char): Option[BitSet] =
     edges.get(c) match {
       case Some(array) =>
@@ -61,6 +110,9 @@ case class Nfa(
 
 object Nfa {
 
+  /**
+   * Build an NFA from a given regular expression.
+   */
   def fromRx(r: Rx): Nfa =
     NfaBuilder.fromRx(r).build
 
@@ -165,6 +217,13 @@ object Nfa {
         case (nfa, (from, c, to)) => nfa.addEdge(from, c, to)
       }
 
+    /**
+     * Build an Nfa from this NfaBuilder instance.
+     *
+     * This operation is fairly expensive: we will need to compute the
+     * transition closure of each input (which we represent as an
+     * array of bitsets).
+     */
     def build: Nfa = {
       val nfa = this
       val size: Int = nfa.edges.size
@@ -189,10 +248,8 @@ object Nfa {
         while (i < xs.length) {
           val x = xs(i)
           if (x != null) {
-            if (acc(i) == null) {
-              acc(i) = BitSet.empty(size)
-            }
-            acc(i) |= x
+            if (acc(i) != null) acc(i) |= x
+            else acc(i) = x.copy()
           }
           i += 1
         }
@@ -203,7 +260,5 @@ object Nfa {
 
       Nfa(size, start, accept, edges)
     }
-
   }
-
 }
