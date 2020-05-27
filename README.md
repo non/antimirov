@@ -121,6 +121,11 @@ exponential in the general case. This means there are plenty of
 expressions for which Antimirov's operations (equality, inclusion,
 intersection, and so on) are prohibitively slow.
 
+There are some good strategies for dealing with this complexity
+through heuristics and optimizations. But some constructions (such as
+very wide alternations contained within a Kleene star) will probably
+never perform very well.
+
 Here's a list of other known problems:
 
     1. Antimirov doesn't preserve user-specified expression syntax
