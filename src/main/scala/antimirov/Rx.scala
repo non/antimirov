@@ -210,6 +210,36 @@ sealed abstract class Rx { lhs =>
     }
 
   /**
+   * Count the number of paths matched by the regular expression.
+   *
+   * Using Size.Unbounded for starSize calculates the "true" pathCount
+   * (since the Kleene star operator is unbounded). Using a finite
+   * number for starSize allows us to distinguish regexes that use the
+   * Kleene star with different branching factors.
+   */
+  def pathCount(starSize: Size): Size =
+    this match {
+      case Phi =>
+        Size.Zero
+      case Empty | Letter(_) | Letters(_) =>
+        Size.One
+      case Choice(r1, r2) =>
+        r1.pathCount(starSize) + r2.pathCount(starSize)
+      case Concat(r1, r2) =>
+        r1.pathCount(starSize) * r2.pathCount(starSize)
+      case Star(r) =>
+        Size.One + r.pathCount(starSize) * starSize
+      case Repeat(r, m, n) if m > 0 =>
+        r.pathCount(starSize).pow(m) * Repeat(r, 0, n - m).pathCount(starSize)
+      case Repeat(r, _, n) if n > 0 =>
+        (Size.One + r.pathCount(starSize) * Repeat(r, 0, n - 1).pathCount(starSize))
+      case Repeat(r, _, _) =>
+        Size.One
+      case Var(_) =>
+        sys.error("!")
+    }
+
+  /**
    * Return the range of string lenghts (if any) matched by this
    * regular expression.
    *
@@ -247,56 +277,72 @@ sealed abstract class Rx { lhs =>
       case Var(_) => sys.error("!")
     }
 
-  def equiv(rhs: Rx): Boolean = {
-    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
-    def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Boolean = {
-      pair match {
-        case (r1, r2) if r1.acceptsEmpty != r2.acceptsEmpty => false
-        case (r1, r2) if r1.isPhi != r2.isPhi => false
-        case _ if env(pair) => true
-        case (r1, r2) if r1.matchSizes != r2.matchSizes => false
-        case (r1, r2) =>
-          val env2 = env + pair
-          val alpha = LetterSet.venn(r1.firstSet, r2.firstSet)
-          alpha.forall(_.isBoth) && alpha.forall { d =>
-            val c = d.value.minOption.get
-            val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
-            val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
-            recur(env2, (d1, d2))
-          }
-      }
-    }
-    recur(Set.empty, (lhs, rhs))
-  }
-
+  /**
+   * Do lhs and rhs accept the same set of strings?
+   */
   def ===(rhs: Rx): Boolean =
-    lhs equiv rhs
+    Rx.equiv(lhs, rhs)
 
+  /**
+   * Is lhs' accepted set a proper subset of rhs' accepted set?
+   */
   def <(rhs: Rx): Boolean =
     partialCompare(rhs) < 0.0
 
+  /**
+   * Is lhs' accepted set a proper superset of rhs' accepted set?
+   */
   def >(rhs: Rx): Boolean =
     partialCompare(rhs) > 0.0
 
+  /**
+   * Is lhs' accepted set a subset of rhs' accepted set?
+   */
   def <=(rhs: Rx): Boolean =
     partialCompare(rhs) <= 0.0
 
+  /**
+   * Is lhs' accepted set a superset of rhs' accepted set?
+   */
   def >=(rhs: Rx): Boolean =
     partialCompare(rhs) >= 0.0
 
+  /**
+   * Is lhs a subset of rhs?
+   */
   def subsetOf(rhs: Rx): Boolean =
     partialCompare(rhs) <= 0.0
 
+  /**
+   * Is lhs a superset of rhs?
+   */
   def supersetOf(rhs: Rx): Boolean =
     partialCompare(rhs) >= 0.0
 
+  /**
+   * Is lhs a proper subset of rhs?
+   */
   def properSubsetOf(rhs: Rx): Boolean =
     partialCompare(rhs) < 0.0
 
+  /**
+   * Is lhs a proper superset of rhs?
+   */
   def properSupersetOf(rhs: Rx): Boolean =
     partialCompare(rhs) > 0.0
 
-  def repr: String = {
+  /**
+   * String representation of Rx.
+   */
+  override def toString: String =
+    reRepr
+
+  /**
+   * Represent this value using traditional "regex" syntax.
+   *
+   * The output of this method should be readable by Rx.parse.
+   */
+  def reRepr: String = {
     def choices(re: Rx): List[Rx] =
       re match {
         case Choice(r1, r2) => choices(r1) ::: choices(r2)
@@ -328,8 +374,11 @@ sealed abstract class Rx { lhs =>
     recur(this, false)
   }
 
-  override def toString: String = repr
-
+  /**
+   * Represent this value using Scala syntax.
+   *
+   * The output of this method should be usable in the REPL.
+   */
   def scalaRepr: String = {
     def recur(re: Rx): String =
       re match {
@@ -347,12 +396,9 @@ sealed abstract class Rx { lhs =>
     recur(this)
   }
 
-  def isSingle: Boolean =
-    this match {
-      case Letter(_) | Letters(_) => true
-      case _ => false
-    }
-
+  /**
+   * Is this regular expressions equivalent to ϕ (phi)?
+   */
   def isPhi: Boolean =
     this match {
       case Phi => true
@@ -362,6 +408,9 @@ sealed abstract class Rx { lhs =>
       case Concat(r1, r2) => r1.isPhi || r2.isPhi
     }
 
+  /**
+   * Is this regular expression equivalent to ε (empty)?
+   */
   def isEmpty: Boolean =
     this match {
       case Empty => true
@@ -370,6 +419,9 @@ sealed abstract class Rx { lhs =>
       case Concat(r1, r2) => r1.isEmpty && r2.isEmpty
     }
 
+  /**
+   * Does this regular expression accept the empty string ("")?
+   */
   lazy val acceptsEmpty: Boolean =
     this match {
       case Empty | Star(_) => true
@@ -380,12 +432,27 @@ sealed abstract class Rx { lhs =>
       case Var(_) => sys.error("!")
     }
 
+  /**
+   * Does this regular expression reject the empty string ("")?
+   */
   def rejectsEmpty: Boolean =
     !acceptsEmpty
 
+  /**
+   * Compute the derivative with respect to `c`.
+   *
+   * The derivative of a regular expressions with respect to `c` is a
+   * new regular expression that accepts a string `s` if and only if the
+   * original expression accepts `c` + `s`.
+   *
+   * For example, the derivative of '(abc)*' with respect to 'a' is '(bc)(abc)*'
+   */
   def deriv(c: Char): Rx =
     Rx.choice(partialDeriv(c))
 
+  /**
+   *
+   */
   def partialDeriv(x: Char): Set[Rx] =
     this match {
       case Phi | Empty => Set.empty
@@ -407,7 +474,10 @@ sealed abstract class Rx { lhs =>
         if (r1.acceptsEmpty) s1 | r2.partialDeriv(x) else s1
     }
 
-  def resolve(x: Int): Rx = {
+  /**
+   *
+   */
+  private def resolve(x: Int): Rx = {
 
     // cartesian product
     def cart(xs: List[Rx], ys: List[Rx]): List[Rx] =
@@ -433,10 +503,16 @@ sealed abstract class Rx { lhs =>
     Rx.choice(rs).star * Rx.choice(bs)
   }
 
-  // -1 means (lhs < rhs) means (lhs subsetOf rhs)
-  //  0 means (lhs = rhs) means (lhs equiv rhs)
-  // +1 means (lhs > rhs) means (lhs supsersetOf rhs)
-  // NaN means none of the above
+  /**
+   * Partial comparison using a subset relation between regular expressions.
+   *
+   * The return value represents the relationship:
+   *
+   *    <0 means (lhs < rhs) means lhs is a subset of rhs
+   *     0 means (lhs = rhs) means lhs is equivalent to rhs
+   *    >0 means (lhs > rhs) means lhs is a supserset of rhs
+   *   NaN means none of the above
+   */
   def partialCompare(rhs: Rx): Double = {
 
     // operation table
@@ -508,22 +584,29 @@ sealed abstract class Rx { lhs =>
     if (lhs == rhs) 0.0 else recur(Set.empty, (lhs, rhs))
   }
 
+  /**
+   *
+   */
   def toJava: JavaPattern =
-    JavaPattern.compile(repr)
+    JavaPattern.compile(reRepr)
 
+  /**
+   *
+   */
   def toScala: ScalaRegex =
-    new ScalaRegex(repr)
+    new ScalaRegex(reRepr)
 }
 
 object Rx {
 
-  def zero: Rx = Phi
-  def phi: Rx = Phi
+  def phi: Rx =
+    Phi
 
-  def empty: Rx = Empty
-  def lambda: Rx = Empty
+  def empty: Rx =
+    Empty
 
-  val dot: Rx = Rx.Letters(LetterSet.Full)
+  val dot: Rx =
+    Rx.Letters(LetterSet.Full)
 
   def parse(s: String): Rx =
     Parser.parse(s)
@@ -550,7 +633,7 @@ object Rx {
     else Letters(LetterSet(cs))
 
   def apply(s: String): Rx =
-    s.foldRight(Rx.lambda)((c, r) => Letter(c) * r)
+    s.foldRight(Rx.empty)((c, r) => Letter(c) * r)
 
   def choice(rs: Iterable[Rx]): Rx =
     if (rs.isEmpty) Phi else rs.reduceLeft(_ + _)
@@ -600,6 +683,31 @@ object Rx {
       }
     }
     recur(1, Map.empty, r)
+  }
+
+  /**
+   * Semantic equivalence for regular expressions.
+   */
+  def equiv(lhs: Rx, rhs: Rx): Boolean = {
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
+    def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Boolean = {
+      pair match {
+        case (r1, r2) if r1.acceptsEmpty != r2.acceptsEmpty => false
+        case (r1, r2) if r1.isPhi != r2.isPhi => false
+        case _ if env(pair) => true
+        case (r1, r2) if r1.matchSizes != r2.matchSizes => false
+        case (r1, r2) =>
+          val env2 = env + pair
+          val alpha = LetterSet.venn(r1.firstSet, r2.firstSet)
+          alpha.forall(_.isBoth) && alpha.forall { d =>
+            val c = d.value.minOption.get
+            val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
+            val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
+            recur(env2, (d1, d2))
+          }
+      }
+    }
+    recur(Set.empty, (lhs, rhs))
   }
 
   def intersect(r1: Rx, r2: Rx): Rx = {

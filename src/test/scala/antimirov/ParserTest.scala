@@ -11,8 +11,7 @@ object ParserTest extends Properties("ParserTest") { self =>
 
   property("parsing preserves semantics") =
     forAll(genRx) { rx0 =>
-      val s = rx0.repr
-      val rx1 = Parser.parse(s)
+      val rx1 = Parser.parse(rx0.reRepr)
       Claim(rx0 === rx1)
     }
 }

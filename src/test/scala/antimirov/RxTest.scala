@@ -208,7 +208,7 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     lst.map { s =>
       val lhs = r.accepts(s)
       val rhs = p.matcher(s).matches
-      Prop(lhs == rhs) :| s"disagreement for '$s' :: ${r.repr} -> $lhs != $rhs"
+      Prop(lhs == rhs) :| s"disagreement for '$s' :: $r -> $lhs != $rhs"
     }.foldLeft(Prop(true))(_ && _)
 
   timedProp("matches java", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>

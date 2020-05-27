@@ -30,6 +30,14 @@ sealed abstract class Size { lhs =>
       case _ => Unbounded
     }
 
+  def pow(k: Int): Size = {
+    def loop(i: Int, acc: Size, mult: Size): Size =
+      if (i <= 0) Size.One
+      else if (i == 1) mult
+      else loop(i / 2, if (i % 2 == 1) acc * mult else acc, mult * mult)
+    loop(k, Size.One, this)
+  }
+
   override def toString: String =
     this match {
       case Unbounded => "∞"
