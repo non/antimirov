@@ -58,8 +58,6 @@ lazy val antimirovSettings = Seq(
     ReleaseStep(action = Command.process("sonatypeReleaseAll", _)),
     pushChanges
   ),
-  credentials += Credentials(
-    Option(System.getProperty("build.publish.credentials")) map (new File(_)) getOrElse (Path.userHome / ".ivy2" / ".credentials")),
   publishTo := {
     val nexus = "https://oss.sonatype.org/"
     if (isSnapshot.value)
