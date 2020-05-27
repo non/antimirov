@@ -256,16 +256,7 @@ sealed abstract class Rx { lhs =>
         case Empty => ""
         case Var(x) => s"Var($x)"
         case Letter(c) => Chars.escape(c)
-        case Letters(cs) if cs.isFull => "."
-        case Letters(cs) =>
-          if (cs.size <= 32768) cs.repr
-          else {
-            val ccs = ~cs
-            ccs.ranges.map {
-              case (x, y) if x == y => LetterSet.escape(x)
-              case (x, y) => s"${LetterSet.escape(x)}-${LetterSet.escape(y)}"
-            }.mkString("[^", "", "]")
-          }
+        case Letters(cs) => cs.toString
         case Star(r) => recur(r, true) + "*"
         case Repeat(r, m, n) =>
           val suffix = if (m == n) s"{$m}" else s"{$m,$n}"

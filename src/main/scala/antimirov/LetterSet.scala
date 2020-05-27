@@ -1,8 +1,8 @@
 package antimirov
 
 import java.util.Arrays
-import scala.collection.mutable
 import scala.collection.immutable.NumericRange
+import scala.collection.mutable
 
 /**
  * LetterSet represents a set of characters.
@@ -74,9 +74,7 @@ import scala.collection.immutable.NumericRange
  * are added and removed would add considerable complexity to the
  * (already complex) implementation.
  */
-class LetterSet(private val array: Array[Char]) { lhs =>
-
-  import LetterSet.escape
+class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
 
   override def equals(that: Any): Boolean =
     that match {
@@ -91,10 +89,14 @@ class LetterSet(private val array: Array[Char]) { lhs =>
     repr
 
   def repr: String =
-    ranges.map {
-      case (x, y) if x == y => escape(x)
-      case (x, y) => s"${escape(x)}-${escape(y)}"
-    }.mkString("[", "", "]")
+    if (isFull) "." else {
+      // TODO: could avoid allocation for ~this
+      val (prefix, cs) = if (size <= 32768) ("[", this) else ("[^", ~this)
+      cs.ranges.map(LetterSet.rangeRepr)/* {
+        case (x, y) if x == y => escape(x)
+        case (x, y) => s"${escape(x)}-${escape(y)}"
+      }*/.mkString(prefix, "", "]")
+    }
 
   lazy val size: Int =
     ranges.map { case (x, y) => y - x + 1 }.sum
@@ -525,6 +527,12 @@ object LetterSet {
             Diff.Both((x1, end))
           }
         }
+    }
+
+  def rangeRepr(pair: (Char, Char)): String =
+    pair match {
+      case (x, y) if x == y => escape(x)
+      case (x, y) => s"${escape(x)}-${escape(y)}"
     }
 }
 
