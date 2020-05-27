@@ -173,7 +173,25 @@ sealed abstract class Rx { lhs =>
     !accepts(s)
 
   /**
+   * Set of "first characters" which this regex can accept.
    *
+   * If a character is not in the firstSet, this regex cannot match
+   * strings starting with that character.
+   *
+   * Each LetterSet represents one or more contiguous character
+   * ranges. We represent the first set as a list of LetterSets to
+   * ensure that each letter set is either completely valid, or
+   * completely invalid, for every internal Rx value. For this regex,
+   * we can treat each element of the list as a congruence class of
+   * characters (which are all treated the same by this regex and all
+   * its children). This is very important for efficiency.
+   *
+   * For example, the first set for the expression ([a-c]|[b-d])e*
+   * would be List([a], [b-c], [d]). This is because [a] is only
+   * matched by [a-c], [d] is only matched by [b-d], and [b-c] is
+   * matched by both. If we instead returned something like
+   * List([a-c], [d]), then [b-d] would partially (but not completely)
+   * match [a-c].
    */
   lazy val firstSet: List[LetterSet] =
     this match {
@@ -191,6 +209,44 @@ sealed abstract class Rx { lhs =>
       case Var(_) => sys.error("!")
     }
 
+  /**
+   * Return the range of string lenghts (if any) matched by this
+   * regular expression.
+   *
+   * ϕ (or regular expressions equivalent to ϕ) will return None. All
+   * other expressions will return (x, y), where 0 <= x <= y < ∞.
+   */
+  lazy val matchSizes: Option[(Size, Size)] =
+    this match {
+      case Phi => None
+      case Empty => Some((Size.Zero, Size.Zero))
+      case Letter(_) | Letters(_) => Some((Size.One, Size.One))
+      case Choice(r1, r2) =>
+        (r1.matchSizes, r2.matchSizes) match {
+          case (Some((x1, y1)), Some((x2, y2))) => Some((x1 min x2, y1 max y2))
+          case (some @ Some(_), None) => some
+          case (None, some @ Some(_)) => some
+          case (None, None) => None
+        }
+      case Concat(r1, r2) =>
+        (r1.matchSizes, r2.matchSizes) match {
+          case (Some((x1, y1)), Some((x2, y2))) =>
+            Some((x1 + x2, y1 + y2))
+          case _ =>
+            None
+        }
+      case Star(r) =>
+        Some((Size.Zero, r.matchSizes match {
+          case Some((_, y)) => y * Size.Unbounded
+          case None => Size.Zero
+        }))
+      case Repeat(r, m, n) =>
+        r.matchSizes.map { case (x, y) =>
+          (x * Size(m), y * Size(n))
+        }
+      case Var(_) => sys.error("!")
+    }
+
   def equiv(rhs: Rx): Boolean = {
     val derivCache = mutable.Map.empty[(Rx, Char), Rx]
     def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Boolean = {
@@ -198,6 +254,7 @@ sealed abstract class Rx { lhs =>
         case (r1, r2) if r1.acceptsEmpty != r2.acceptsEmpty => false
         case (r1, r2) if r1.isPhi != r2.isPhi => false
         case _ if env(pair) => true
+        case (r1, r2) if r1.matchSizes != r2.matchSizes => false
         case (r1, r2) =>
           val env2 = env + pair
           val alpha = LetterSet.venn(r1.firstSet, r2.firstSet)
@@ -419,6 +476,9 @@ sealed abstract class Rx { lhs =>
             case _ => 0.0
           }
 
+          res = acc(res, rangeSubset(lhs.matchSizes, rhs.matchSizes))
+          if (isNaN(res)) return Double.NaN
+
           val alpha = LetterSet.venn(lhs.firstSet, rhs.firstSet)
           val diffIt = alpha.iterator
           while (diffIt.hasNext) {
@@ -637,4 +697,19 @@ object Rx {
     }
     recur(1, Map.empty, (r1, r2))
   }
+
+  /**
+   * Return whether lhs is an improper subset of rhs or not.
+   *
+   * We assume that x <= y for each tuple.
+   */
+  private def rangeSubset(lhs: Option[(Size, Size)], rhs: Option[(Size, Size)]): Double =
+    (lhs, rhs) match {
+      case _ if lhs == rhs => 0.0
+      case (Some((x1, y1)), Some((x2, y2))) =>
+        if (x2 <= x1 && y1 <= y2) -1.0
+        else if (x1 <= x2 && y2 <= y1) 1.0
+        else Double.NaN
+      case _ => if (lhs.isEmpty) -1.0 else 1.0
+    }
 }
