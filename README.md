@@ -45,19 +45,7 @@ efficient matching.
 
 ### Getting Antimirov
 
-Antimirov supports Scala 2.13. If you use SBT, you can
-include Antimirov via the following `build.sbt` snippet:
-
-```
-libraryDependencies += "org.spire-math" %% "antimirov" % "0.0.1"
-```
-
-Antimirov also supports Scala.js. To use Antimirov with Scala.js, use
-the following `build.sbt` snippet:
-
-```
-libraryDependencies += "org.spire-math" %%% "antimirov" % "0.0.1"
-```
+Antimirov supports Scala 2.13 and 2.12. It is not yet published.
 
 ### Details
 
