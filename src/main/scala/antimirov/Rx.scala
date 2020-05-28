@@ -1,16 +1,14 @@
 package antimirov
 
 import java.lang.Double.isNaN
-import java.util.regex.{Pattern => JavaPattern}
 import scala.collection.mutable
-import scala.util.matching.{Regex => ScalaRegex}
+
+import Rx.{Choice, Concat, Empty, Letter, Letters, Phi, Repeat, Star, Var}
 
 /**
  * Rx is a regular expression.
  */
 sealed abstract class Rx { lhs =>
-
-  import Rx._
 
   /**
    * Choice operator.
@@ -451,7 +449,21 @@ sealed abstract class Rx { lhs =>
     Rx.choice(partialDeriv(c))
 
   /**
+   * Compute the partial derivatives with respect to `x`.
    *
+   * A partial derivative of a regular expression with respect to `x`
+   * is a new regular expression that only accepts a string `s` if the
+   * original expression accepts `x` + `s`.
+   *
+   * Unlike a derivative, if a partial derivative does not match `s`
+   * that does not mean that the original regular expression would not
+   * match `x` + `s` -- there may be some other partial derivative
+   * that does match `s`.
+   *
+   * If you calculate all the partial derivatives and union them
+   * together, you get a regular expression that is equivalent to the
+   * derivative. (In fact, this is how Antimirov implements the
+   * derivative operation.)
    */
   def partialDeriv(x: Char): Set[Rx] =
     this match {
@@ -475,7 +487,8 @@ sealed abstract class Rx { lhs =>
     }
 
   /**
-   *
+   * Rewrite regular expressions that have an embedded `Var(x)` node
+   * into a new regular exprssion involving star.
    */
   private def resolve(x: Int): Rx = {
 
@@ -552,7 +565,7 @@ sealed abstract class Rx { lhs =>
             case _ => 0.0
           }
 
-          res = acc(res, rangeSubset(lhs.matchSizes, rhs.matchSizes))
+          res = acc(res, Rx.rangeSubset(lhs.matchSizes, rhs.matchSizes))
           if (isNaN(res)) return Double.NaN
 
           val alpha = LetterSet.venn(lhs.firstSet, rhs.firstSet)
@@ -585,16 +598,16 @@ sealed abstract class Rx { lhs =>
   }
 
   /**
-   *
+   * Compile this regular expression to a java.util.regex.Pattern.
    */
-  def toJava: JavaPattern =
-    JavaPattern.compile(reRepr)
+  def toJava: java.util.regex.Pattern =
+    java.util.regex.Pattern.compile(reRepr)
 
   /**
-   *
+   * Compile this regular expression to a scala.util.matching.Regex.
    */
-  def toScala: ScalaRegex =
-    new ScalaRegex(reRepr)
+  def toScala: scala.util.matching.Regex =
+    new scala.util.matching.Regex(reRepr)
 }
 
 object Rx {
