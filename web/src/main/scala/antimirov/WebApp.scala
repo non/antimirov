@@ -80,8 +80,10 @@ object WebApp {
 
     betaRx match {
       case Some(b) =>
+        writeInto("not-beta", (~b).toString)
         writeInto("str-in-beta", b.accepts(str).toString)
       case None =>
+        writeInto("not-beta", error)
         writeInto("str-in-beta", error)
     }
 
