@@ -30,15 +30,25 @@ s ∈ β := <span id="str-in-beta">true</span>
   <b>x|y</b>       alternation: match <b>x</b> or <b>y</b>
   <b>x*</b>        kleene star: match <b>x</b> zero-or-more times
   <b>(xyz)</b>     grouping: treat <b>xyz</b> as a single item (e.g. <b>(xyz)*</b>)
-  <b>()</b>        the empty string matches nothing
+  <b>()</b>        an empty regex matches the empty string
   <b>x+</b>        kleene plus: match <b>x</b> one-or-more times (equivalent to <b>xx*</b>)
-  <b>x?</b>        optional: optionally match <b>x</b> (equivalent to <b>(x|)</b>
+  <b>x?</b>        optional: optionally match <b>x</b> (equivalent to <b>(x|)</b>)
   <b>x{n}</b>      exponentiation: concatenate <b>x</b> to itself <b>n</b> times
   <b>x{m,n}</b>    repetition: concatenate <b>x</b> to itself between <b>m</b> and <b>n</b> times
   <b>[a-z0-9]</b>  grouping: match any single character in the group
   <b>[^a-z0-9]</b> negative grouping: match any single character <b>not</b> in the group
   <b>\c</b>        escaping: match the special character <b>c</b>
   <b>\u001a</b>    unicode escaping: match the corresponding UTF-16 character
+  a, b, c, ...     all other characters match themselves
+
+unsupported features:
+
+  - anchors (e.g. <b>^</b>, <b>$</b>)
+  - zero-width assertions (e.g. <b>(?=...)</b>, <b>(?<=...)</b>)
+  - back references (e.g. <b>\1</b>, <b>\2</b>)
+  - subgroup extraction
+  - searching or partial matching
+  - other flags that change behavior (e.g. case-insensitivity)
 
 (see <a href ="https://github.com/non/antimirov">https://github.com/non/antimirov</a> for more information)
     </pre>
