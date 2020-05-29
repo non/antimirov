@@ -71,7 +71,7 @@ object WebApp {
     betaStr = beta
     strStr = str
 
-    val error = "<b>error</b>"
+    val error = "error"
 
     println((alphaRx, betaRx).toString)
 
