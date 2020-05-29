@@ -42,7 +42,6 @@ object WebApp {
   var betaRx: Option[Rx] = None
 
   def writeInto(idx: String, value: String): Unit = {
-    println(s"write $value into $idx")
     // it's really an <output> element but this seems to work.
     val area = document.getElementById(idx).asInstanceOf[html.TextArea]
     area.value = value
@@ -50,7 +49,6 @@ object WebApp {
   }
 
   def updateAll(): Unit = {
-    println("updateAll ran!")
     val alpha: String = document.getElementById("alpha").asInstanceOf[html.TextArea].value
     val beta: String = document.getElementById("beta").asInstanceOf[html.TextArea].value
     val str: String = document.getElementById("str").asInstanceOf[html.TextArea].value
@@ -62,8 +60,6 @@ object WebApp {
 
     if (ok) return ()
 
-    println("done some real work")
-
     alphaRx = compile(alpha)
     betaRx = compile(beta)
 
@@ -72,8 +68,6 @@ object WebApp {
     strStr = str
 
     val error = "error"
-
-    println((alphaRx, betaRx).toString)
 
     alphaRx match {
       case Some(a) =>
