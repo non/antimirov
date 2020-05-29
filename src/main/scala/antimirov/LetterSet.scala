@@ -164,6 +164,21 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
 
   def apply(c: Char): Boolean = contains(c)
 
+  def get(index: Int): Char =
+    if (index < 0 || size <= index) {
+      sys.error(s"invalid index: $index")
+    } else {
+      var i = index
+      val it = ranges
+      while (it.hasNext) {
+        val (c1, c2) = it.next
+        val span = c2 - c1 + 1
+        if (i < span) return (c1 + i).toChar
+        i -= span
+      }
+      sys.error(s"impossible: exhausted ranges with i=$i")
+    }
+
   def intersects(rhs: LetterSet): Boolean =
     LetterSet.diff(lhs, rhs).exists {
       case Diff.Both(_) => true

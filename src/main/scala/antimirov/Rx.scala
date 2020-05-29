@@ -1,6 +1,7 @@
 package antimirov
 
 import java.lang.Double.isNaN
+import scala.collection.immutable.NumericRange
 import scala.collection.mutable
 
 import Rx.{Choice, Concat, Empty, Letter, Letters, Phi, Repeat, Star, Var}
@@ -336,21 +337,35 @@ sealed abstract class Rx { lhs =>
     reRepr
 
   /**
+   * Return a list of nodes to be chosen between.
+   *
+   * If this node is a Choice node, the list will have two or more
+   * elements. Otherwise it will have exactly one element.
+   */
+  def choices: Set[Rx] =
+    this match {
+      case Choice(r1, r2) => r1.choices | r2.choices
+      case r => Set(r)
+    }
+
+  /**
+   * Return a list of nodes to be concatenated.
+   *
+   * If this node is a Concat node, the list will have two or more
+   * elements. Otherwise it will have exactly one element.
+   */
+  def concats: List[Rx] =
+    this match {
+      case Concat(r1, r2) => r1.concats ::: r2.concats
+      case r => r :: Nil
+    }
+
+  /**
    * Represent this value using traditional "regex" syntax.
    *
    * The output of this method should be readable by Rx.parse.
    */
   def reRepr: String = {
-    def choices(re: Rx): List[Rx] =
-      re match {
-        case Choice(r1, r2) => choices(r1) ::: choices(r2)
-        case r => List(r)
-      }
-    def cats(re: Rx): List[Rx] =
-      re match {
-        case Concat(r1, r2) => cats(r1) ::: cats(r2)
-        case r => List(r)
-      }
     def recur(re: Rx, parens: Boolean): String =
       re match {
         case Phi => "∅"
@@ -363,10 +378,10 @@ sealed abstract class Rx { lhs =>
           val suffix = if (m == n) s"{$m}" else s"{$m,$n}"
           "(" + recur(r, true) + suffix + ")"
         case c @ Choice(_, _) =>
-          val s = choices(c).map(recur(_, false)).mkString("|")
+          val s = c.choices.map(recur(_, false)).mkString("|")
           if (parens) s"($s)" else s
         case c @ Concat(_, _) =>
-          val s = cats(c).map(recur(_, true)).mkString
+          val s = c.concats.map(recur(_, true)).mkString
           if (parens) s"($s)" else s
       }
     recur(this, false)
@@ -529,23 +544,23 @@ sealed abstract class Rx { lhs =>
   private def resolve(x: Int): Rx = {
 
     // cartesian product
-    def cart(xs: List[Rx], ys: List[Rx]): List[Rx] =
+    def cart(xs: Set[Rx], ys: Set[Rx]): Set[Rx] =
       for { x <- xs; y <- ys } yield x * y
 
-    def recur(r: Rx, x: Int): (List[Rx], List[Rx]) =
+    def recur(r: Rx, x: Int): (Set[Rx], Set[Rx]) =
       r match {
         case v @ Var(y) =>
-          if (y == x) (List(Empty), Nil) else (Nil, List(v))
+          if (y == x) (Set(Empty), Set.empty) else (Set.empty, Set(v))
         case Concat(r1, r2) =>
           val (rs1, bs1) = recur(r1, x)
           val (rs2, bs2) = recur(r2, x)
-          (cart(rs1, rs2) ::: cart(rs1, bs2) ::: cart(bs1, rs2), cart(bs1, bs2))
+          (cart(rs1, rs2) | cart(rs1, bs2) | cart(bs1, rs2), cart(bs1, bs2))
         case Choice(r1, r2) =>
           val (rs1, bs1) = recur(r1, x)
           val (rs2, bs2) = recur(r2, x)
-          (rs1 ::: rs2, bs1 ::: bs2)
+          (rs1 | rs2, bs1 | bs2)
         case r =>
-          (Nil, List(r))
+          (Set.empty, Set(r))
       }
 
     val (rs, bs) = recur(this, x)
@@ -648,27 +663,73 @@ sealed abstract class Rx { lhs =>
 
 object Rx {
 
+  /**
+   * Phi (ϕ) is the unmatchable regular expression.
+   *
+   * Phi corresponds to the 'zero' element of the Kleene algebra of
+   * regular expressions:
+   *
+   *     ϕ + x = x * ϕ = x
+   *     ϕ * x = x * ϕ = ϕ
+   *     ϕ.star = ε
+   *
+   * Its set of accepted strings is the empty set. Most regular
+   * expression syntaxes do not support ϕ.
+   */
   def phi: Rx =
     Phi
 
+  /**
+   * Empty (ε) is the empty regular expression.
+   *
+   * Empty corresponds to the 'one' element of the Kleene algebra of
+   * regular expressions:
+   *
+   *     ε * x = x * ε = x
+   *     ε.star = ε
+   *
+   * Its set of accepted strings contains only the empty string. Most
+   * regular expression syntaxes denote this with an empty string,
+   * for example in 'a(b|)'.
+   */
   def empty: Rx =
     Empty
 
+  /**
+   * Dot (.) matches any single character.
+   *
+   * This is equivalent (and represented internally) as the character
+   * group [\u0000-\uffff].
+   */
   val dot: Rx =
     Rx.Letters(LetterSet.Full)
 
+  /**
+   * The regular expression that matches all possible strings.
+   *
+   * The expression for the universe is: '.*'
+   */
+  val Universe: Rx =
+    closure(LetterSet.Full)
+
+  /**
+   * Parse the given string into a regular expression.
+   *
+   * The syntax used is a subset of the Java Regex syntax.
+   */
   def parse(s: String): Rx =
     Parser.parse(s)
 
+  /**
+   * Construct a regular expression that matches the given character `c`.
+   */
   def apply(c: Char): Rx =
     Letter(c)
 
-  def apply(cc: (Char, Char)): Rx = {
-    val (c1, c2) = cc
-    if (c1 == c2) Letter(c1)
-    else Letters(LetterSet(c1 to c2))
-  }
-
+  /**
+   * Construct a regular expression that matches one character from
+   * the given set `cs`.
+   */
   def apply(cs: LetterSet): Rx =
     if (cs.isEmpty) Empty
     else cs.singleValue match {
@@ -676,25 +737,52 @@ object Rx {
       case None => Letters(cs)
     }
 
+  /**
+   * Construct a regular expression that matches one character from
+   * the given set `cs`.
+   */
   def apply(cs: Set[Char]): Rx =
     if (cs.size == 0) Empty
     else if (cs.size == 1) Letter(cs.head)
     else Letters(LetterSet(cs))
 
+  /**
+   * Construct a regular expression that matches one character from
+   * the given set `cs`, expressed as a range (e.g. c1 to c2).
+   */
+  def apply(cs: NumericRange[Char]): Rx =
+    Rx(LetterSet(cs))
+
+  /**
+   * Construct a regular expression that matches the string `s`.
+   */
   def apply(s: String): Rx =
     s.foldRight(Rx.empty)((c, r) => Letter(c) * r)
 
+  /**
+   * Construct a regular expression from the union of `rs`.
+   *
+   * If `rs` is empty, this method returns ϕ.
+   */
   def choice(rs: Iterable[Rx]): Rx =
-    if (rs.isEmpty) Phi else rs.reduceLeft(_ + _)
+    rs.foldRight(phi)(_ + _)
 
-  val Universe: Rx =
-    closure(LetterSet.Full)
+  /**
+   * Construct a regular expression from the concatenation of `rs`.
+   *
+   * If `rs` is empty, this method returns ε.
+   */
+  def concat(rs: Iterable[Rx]): Rx =
+    rs.foldRight(empty)(_ * _)
 
+  /**
+   * Compute the closure for the given alphabet.
+   *
+   * The closure is the set of all possible strings using characters
+   * from the alphabet. The closure of '.' is the universe.
+   */
   def closure(alphabet: LetterSet): Rx =
     Letters(alphabet).star
-
-  def closure(alphabet: Set[Char]): Rx =
-    closure(LetterSet(alphabet))
 
   case object Phi extends Rx // matches nothing
   case object Empty extends Rx // matches empty string ("")
@@ -704,7 +792,7 @@ object Rx {
   case class Concat(r1: Rx, r2: Rx) extends Rx // concatenation
   case class Repeat(r: Rx, m: Int, n: Int) extends Rx // repetition, n > 0, n >= m
   case class Star(r: Rx) extends Rx // kleene star
-  case class Var(x: Int) extends Rx // used internally
+  case class Var private (x: Int) extends Rx // used internally
 
   def canonicalize(r: Rx): Rx = {
     val derivCache = mutable.Map.empty[(Rx, Char), Rx]

@@ -1,13 +1,16 @@
 import ReleaseTransformations._
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
+def ScalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.3"
+def Claimant = "org.typelevel" %% "claimant" % "0.1.3"
+
 lazy val antimirovSettings = Seq(
   organization := "org.spire-math",
   scalaVersion := "2.13.2",
   crossScalaVersions := Seq("2.13.2", "2.12.11"),
   libraryDependencies ++=
-    "org.scalacheck" %% "scalacheck" % "1.14.3" % Test ::
-    "org.typelevel" %% "claimant" % "0.1.3" % Test ::
+    ScalaCheck % Test ::
+    Claimant % Test ::
     Nil,
   testOptions in Test +=
     //Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "1", "-w", "8"),
@@ -99,8 +102,23 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv())
 
 lazy val coreJVM = core.jvm
-
 lazy val coreJS = core.js
+
+lazy val check = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("check"))
+  .dependsOn(core)
+  .settings(name := "antimirov-check")
+  .settings(antimirovSettings: _*)
+  .settings(libraryDependencies += ScalaCheck)
+  .jsSettings(
+    scalaJSStage in Global := FastOptStage,
+    parallelExecution := false,
+    coverageEnabled := false,
+    jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv())
+
+lazy val checkJVM = check.jvm
+lazy val checkJS = check.js
 
 lazy val bench = project.in(file("bench"))
   .dependsOn(coreJVM)
