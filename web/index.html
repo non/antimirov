@@ -6,22 +6,22 @@
   </head>
   <body>
 <pre><h1>enter some regular expressions!</h1>
-α := <textarea id="alpha" rows="1" cols="60"></textarea>
-β := <textarea id="beta" rows="1" cols="60"></textarea>
+<b>α</b> := <textarea id="alpha" rows="1" cols="60"></textarea>
+<b>β</b> := <textarea id="beta" rows="1" cols="60"></textarea>
 <hr>
-   ~α := <span id="not-alpha">ϕ</span>
-   ~β := <span id="not-beta">ϕ</span>
-α < β := <span id="alpha-lt-beta">false</span>
-α = β := <span id="alpha-eq-beta">true</span>
-α > β := <span id="alpha-gt-beta">false</span>
-α & β := <span id="alpha-and-beta">.*</span>
-α ^ β := <span id="alpha-xor-beta">ϕ</span>
-α - β := <span id="alpha-minus-beta">ϕ</span>
+<b>   ~α</b> := <span id="not-alpha">ϕ</span>
+<b>   ~β</b> := <span id="not-beta">ϕ</span>
+<b>α < β</b> := <span id="alpha-lt-beta">false</span>
+<b>α = β</b> := <span id="alpha-eq-beta">true</span>
+<b>α > β</b> := <span id="alpha-gt-beta">false</span>
+<b>α & β</b> := <span id="alpha-and-beta">.*</span>
+<b>α ^ β</b> := <span id="alpha-xor-beta">ϕ</span>
+<b>α - β</b> := <span id="alpha-minus-beta">ϕ</span>
 <hr>
-s := <textarea id="str" rows="1" cols="60">hello world</textarea>
+<b>s</b> := <textarea id="str" rows="1" cols="60">hello world</textarea>
 
-s ∈ α := <span id="str-in-alpha">true</span>
-s ∈ β := <span id="str-in-beta">true</span>
+<b>s ∈ α</b> := <span id="str-in-alpha">true</span>
+<b>s ∈ β</b> := <span id="str-in-beta">true</span>
 <hr>
 <b>regex syntax</b>
 
@@ -39,11 +39,11 @@ s ∈ β := <span id="str-in-beta">true</span>
   <b>[^a-z0-9]</b> negative grouping: match any single character <b>not</b> in the group
   <b>\c</b>        escaping: match the special character <b>c</b>
   <b>\u001a</b>    unicode escaping: match the corresponding UTF-16 character
-  a, b, c, ...     all other characters match themselves
+  a, b, c   all other characters match themselves
 
-unsupported features:
+<b>unsupported features</b>
 
-  - anchors (e.g. <b>^</b>, <b>$</b>)
+  - anchors (e.g. <b>^</b>, <b>$</b>), <i>although <b>^</b> and <b>$</b> must still be escaped!</i>
   - zero-width assertions (e.g. <b>(?=...)</b>, <b>(?<=...)</b>)
   - back references (e.g. <b>\1</b>, <b>\2</b>)
   - subgroup extraction
