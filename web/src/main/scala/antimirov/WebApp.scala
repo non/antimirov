@@ -26,25 +26,38 @@ object WebApp {
     })
   }
 
-  def compile(s: String): Option[Rx] =
-    Try(Rx.parse(s)) match {
-      case Success(rx) => Some(rx)
-      case Failure(e) =>
-        println(e)
-        None
-    }
+  def compile(s: String): Try[Rx] =
+    Try(Rx.parse(s))
 
-  var alphaStr: String = ".*"
-  var betaStr: String = ".*"
+  var alphaStr: String = ""
+  var betaStr: String = ""
   var strStr: String = "hello world"
 
   var alphaRx: Option[Rx] = None
-  var betaRx: Option[Rx] = None
+  var alphaError: String = ""
 
-  def writeInto(idx: String, value: String): Unit = {
-    // it's really an <output> element but this seems to work.
-    val area = document.getElementById(idx).asInstanceOf[html.TextArea]
-    area.value = value
+  var betaRx: Option[Rx] = None
+  var betaError: String = ""
+
+  def text(s: String): org.scalajs.dom.raw.Element = {
+    val span = document.createElement("span")
+    span.textContent = s
+    span
+  }
+
+  def errorText(s: String): org.scalajs.dom.raw.Element = {
+    val italic = document.createElement("i")
+    italic.textContent = s
+    italic
+  }
+
+  def writeInto(idx: String, s: String): Unit =
+    writeInto(idx, text(s))
+
+  def writeInto(idx: String, elem: org.scalajs.dom.raw.Element): Unit = {
+    val node = document.getElementById(idx)
+    while (node.hasChildNodes) node.removeChild(node.lastChild)
+    node.appendChild(elem)
     ()
   }
 
@@ -60,48 +73,68 @@ object WebApp {
 
     if (ok) return ()
 
-    alphaRx = compile(alpha)
-    betaRx = compile(beta)
+    compile(alpha) match {
+      case Success(rx) =>
+        alphaRx = Some(rx)
+        alphaError = ""
+      case Failure(e) =>
+        alphaRx = None
+        alphaError = s"α: ${e.getMessage}"
+    }
+
+    compile(beta) match {
+      case Success(rx) =>
+        betaRx = Some(rx)
+        betaError = ""
+      case Failure(e) =>
+        betaRx = None
+        betaError = s"β: ${e.getMessage}"
+    }
 
     alphaStr = alpha
     betaStr = beta
     strStr = str
 
-    val error = "error"
-
     alphaRx match {
       case Some(a) =>
-        writeInto("not-alpha", (~a).toString)
-        writeInto("str-in-alpha", a.accepts(str).toString)
+        writeInto("not-alpha", text((~a).toString))
+        writeInto("str-in-alpha", text(a.accepts(str).toString))
       case None =>
-        writeInto("not-alpha", error)
-        writeInto("str-in-alpha", error)
+        writeInto("not-alpha", errorText(alphaError))
+        writeInto("str-in-alpha", errorText(alphaError))
     }
 
     betaRx match {
       case Some(b) =>
-        writeInto("not-beta", (~b).toString)
-        writeInto("str-in-beta", b.accepts(str).toString)
+        writeInto("not-beta", text((~b).toString))
+        writeInto("str-in-beta", text(b.accepts(str).toString))
       case None =>
-        writeInto("not-beta", error)
-        writeInto("str-in-beta", error)
+        writeInto("not-beta", errorText(betaError))
+        writeInto("str-in-beta", errorText(betaError))
     }
 
     (alphaRx, betaRx) match {
       case (Some(a), Some(b)) =>
-        writeInto("alpha-lt-beta", (a < b).toString)
-        writeInto("alpha-eq-beta", (a === b).toString)
-        writeInto("alpha-gt-beta", (a > b).toString)
-        writeInto("alpha-and-beta", (a & b).toString)
-        writeInto("alpha-xor-beta", (a ^ b).toString)
-        writeInto("alpha-minus-beta", (a - b).toString)
+        writeInto("alpha-lt-beta", text((a < b).toString))
+        writeInto("alpha-eq-beta", text((a === b).toString))
+        writeInto("alpha-gt-beta", text((a > b).toString))
+        writeInto("alpha-and-beta", text((a & b).toString))
+        writeInto("alpha-xor-beta", text((a ^ b).toString))
+        writeInto("alpha-minus-beta", text((a - b).toString))
       case _ =>
-        writeInto("alpha-lt-beta", error)
-        writeInto("alpha-eq-beta", error)
-        writeInto("alpha-gt-beta", error)
-        writeInto("alpha-and-beta", error)
-        writeInto("alpha-xor-beta", error)
-        writeInto("alpha-minus-beta", error)
+        val errors =
+          (alphaError.nonEmpty, betaError.nonEmpty) match {
+            case (true, true) => s"$alphaError, $betaError"
+            case (true, false) => alphaError
+            case (false, true) => betaError
+            case (false, false) => sys.error("should not happen")
+          }
+        writeInto("alpha-lt-beta", errorText(errors))
+        writeInto("alpha-eq-beta", errorText(errors))
+        writeInto("alpha-gt-beta", errorText(errors))
+        writeInto("alpha-and-beta", errorText(errors))
+        writeInto("alpha-xor-beta", errorText(errors))
+        writeInto("alpha-minus-beta", errorText(errors))
     }
   }
 

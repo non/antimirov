@@ -5,34 +5,30 @@
     <title>antimirov</title>
   </head>
   <body>
-<pre><h1>antimirov!</h1>
-enter some regular expressions!
-
-α := <textarea id="alpha" rows="1" cols="60">.*</textarea>
-β := <textarea id="beta" rows="1" cols="60">.*</textarea>
+<pre><h1>enter some regular expressions!</h1>
+α := <textarea id="alpha" rows="1" cols="60"></textarea>
+β := <textarea id="beta" rows="1" cols="60"></textarea>
 <hr>
-   ~α := <output id="not-alpha">ϕ</output>
-   ~β := <output id="not-beta">ϕ</output>
-α < β := <output id="alpha-lt-beta">false</output>
-α = β := <output id="alpha-eq-beta">true</output>
-α > β := <output id="alpha-gt-beta">false</output>
-α & β := <output id="alpha-and-beta">.*</output>
-α ^ β := <output id="alpha-xor-beta">ϕ</output>
-α - β := <output id="alpha-minus-beta">ϕ</output>
+   ~α := <span id="not-alpha">ϕ</span>
+   ~β := <span id="not-beta">ϕ</span>
+α < β := <span id="alpha-lt-beta">false</span>
+α = β := <span id="alpha-eq-beta">true</span>
+α > β := <span id="alpha-gt-beta">false</span>
+α & β := <span id="alpha-and-beta">.*</span>
+α ^ β := <span id="alpha-xor-beta">ϕ</span>
+α - β := <span id="alpha-minus-beta">ϕ</span>
 <hr>
 s := <textarea id="str" rows="1" cols="60">hello world</textarea>
 
-s ∈ α := <output id="str-in-alpha">true</output>
-s ∈ β := <output id="str-in-beta">true</output>
+s ∈ α := <span id="str-in-alpha">true</span>
+s ∈ β := <span id="str-in-beta">true</span>
 
 (see <a href ="https://github.com/non/antimirov">https://github.com/non/antimirov</a> for more information)
     </pre>
 
-    <!-- Include Scala.js dev code
-    <script type="text/javascript" src="./target/scala-2.13/antimirov-web-fastopt.js"></script> –->
+    <script type="text/javascript" src="antimirov-web-opt.js"></script>
 
-    <!-- Include Scala.js prod code -->
-    <script type="text/javascript" src="./target/scala-2.13/antimirov-web-opt.js"></script>
+    <!-- <script type="text/javascript" src="antimirov-web-fastopt.js"></script> -->
 
   </body>
 </html>
