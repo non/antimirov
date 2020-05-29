@@ -585,6 +585,22 @@ sealed abstract class Rx { lhs =>
   }
 
   /**
+   * Reverse the regular expression.
+   *
+   * For every string matched by the original expression, the reversed
+   * expression matches the reversed string. There are no other
+   * differences, and .reverse.reverse is a no-op.
+   */
+  def reverse: Rx =
+    this match {
+      case Concat(r1, r2) => Concat(r2.reverse, r1.reverse)
+      case Choice(r1, r2) => Choice(r1.reverse, r2.reverse)
+      case Star(r) => Star(r.reverse)
+      case Repeat(r, m, n) => Repeat(r.reverse, m, n)
+      case r => r
+    }
+
+  /**
    *
    */
   def toJava: JavaPattern =

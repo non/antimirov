@@ -102,6 +102,16 @@ lazy val coreJVM = core.jvm
 
 lazy val coreJS = core.js
 
+lazy val web = project.in(file("web"))
+  .dependsOn(coreJS)
+  .settings(name := "antimirov-web")
+  .settings(antimirovSettings: _*)
+  .settings(noPublish: _*)
+  .settings(coverageEnabled := false)
+  .settings(scalaJSUseMainModuleInitializer := true)
+  .settings(libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "1.0.0")
+  .enablePlugins(ScalaJSPlugin)
+
 lazy val bench = project.in(file("bench"))
   .dependsOn(coreJVM)
   .settings(name := "antimirov-bench")
