@@ -1,16 +1,14 @@
 package antimirov
 
 import java.lang.Double.isNaN
-import java.util.regex.{Pattern => JavaPattern}
 import scala.collection.mutable
-import scala.util.matching.{Regex => ScalaRegex}
+
+import Rx.{Choice, Concat, Empty, Letter, Letters, Phi, Repeat, Star, Var}
 
 /**
  * Rx is a regular expression.
  */
 sealed abstract class Rx { lhs =>
-
-  import Rx._
 
   /**
    * Choice operator.
@@ -451,7 +449,23 @@ sealed abstract class Rx { lhs =>
     Rx.choice(partialDeriv(c))
 
   /**
+   * Compute the partial derivatives with respect to `x`.
    *
+   * A partial derivative of a regular expression with respect to `x`
+   * is a new regular expression that only accepts a string `s` if the
+   * original expression accepts `x` + `s`.
+   *
+   * Unlike a derivative, if a partial derivative does not match `s`
+   * that does not mean that the original regular expression would not
+   * match `x` + `s` -- there may be some other partial derivative
+   * that does match `s`.
+   *
+   * If you calculate all the partial derivatives and union them
+   * together, you get a regular expression that is equivalent to the
+   * derivative. (In fact, this is how Antimirov implements the
+   * derivative operation.)
+   *
+   * We use a Set here to avoid duplicate partial derivatives.
    */
   def partialDeriv(x: Char): Set[Rx] =
     this match {
@@ -475,7 +489,42 @@ sealed abstract class Rx { lhs =>
     }
 
   /**
+   * Rewrite regular expressions that have an embedded `Var(x)` node
+   * into a new regular expression involving star.
    *
+   * Var is used for self-referential formulas that are generated, and
+   * which need to be implemented with Kleene star.
+   *
+   * For example, imagine that we have computed the following:
+   *
+   *     R = x | (y * R)
+   *
+   * When matching with R, if we see x, we are done. However, if we
+   * match y then we must match R. So we can only "finish" matching by
+   * seeing an x, after seeing zero-or-more y's.
+   *
+   * Based on that description, notice that R corresponds to 'y*x'.
+   *
+   * Imagine we are computing the intersection (x & y). When we start
+   * recursing on the derivatives of x and y, we keep track of the
+   * fact that we're in the process of resolving (x & y) by adding (x,
+   * y) to the environment, mapped to Var(1).
+   *
+   * If we encounter (x & y) again, we'll immediately replace that
+   * with Var(1) to note that we've encountered a self-reference
+   * (rather than continuing to infinitely recurse). Once we finish
+   * the intersection, we need to rewrite these self-referential var
+   * nodes into normal regex form (as we did with R).
+   *
+   * Every var node can be resolved into an expression that has the
+   * following form:
+   *
+   *     choice(r1, r2, ..., rn).star * choice(b1, b2, ..., bn)
+   *
+   * The inner method `recur` computes a list of rs and bs for each
+   * node in the expression. Nodes that don't reference Var(x) will
+   * only return elements in the bs. Var(x) (and expressions that
+   * contain Var(x)) will put expressions in rs as well.
    */
   private def resolve(x: Int): Rx = {
 
@@ -552,7 +601,7 @@ sealed abstract class Rx { lhs =>
             case _ => 0.0
           }
 
-          res = acc(res, rangeSubset(lhs.matchSizes, rhs.matchSizes))
+          res = acc(res, Rx.rangeSubset(lhs.matchSizes, rhs.matchSizes))
           if (isNaN(res)) return Double.NaN
 
           val alpha = LetterSet.venn(lhs.firstSet, rhs.firstSet)
@@ -602,15 +651,16 @@ sealed abstract class Rx { lhs =>
 
   /**
    *
+   * Compile this regular expression to a java.util.regex.Pattern.
    */
-  def toJava: JavaPattern =
-    JavaPattern.compile(reRepr)
+  def toJava: java.util.regex.Pattern =
+    java.util.regex.Pattern.compile(reRepr)
 
   /**
-   *
+   * Compile this regular expression to a scala.util.matching.Regex.
    */
-  def toScala: ScalaRegex =
-    new ScalaRegex(reRepr)
+  def toScala: scala.util.matching.Regex =
+    new scala.util.matching.Regex(reRepr)
 }
 
 object Rx {
