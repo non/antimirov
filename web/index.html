@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>antimirov</title>
+  </head>
+  <body>
+<pre><h1>antimirov!</h1>
+enter some regular expressions!
+
+α := <textarea id="alpha" rows="1" cols="60">.*</textarea>
+β := <textarea id="beta" rows="1" cols="60">.*</textarea>
+<hr>
+~α := <output id="not-alpha">ϕ</output>
+α < β := <output id="alpha-lt-beta">false</output>
+α = β := <output id="alpha-eq-beta">true</output>
+α > β := <output id="alpha-gt-beta">false</output>
+α & β := <output id="alpha-and-beta">.*</output>
+α ^ β := <output id="alpha-xor-beta">ϕ</output>
+α - β := <output id="alpha-minus-beta">ϕ</output>
+<hr>
+s := <textarea id="str" rows="1" cols="60">hello world</textarea>
+
+s ∈ α := <output id="str-in-alpha">true</output>
+s ∈ β := <output id="str-in-beta">true</output>
+    </pre>
+
+    <!-- Include Scala.js dev code
+    <script type="text/javascript" src="./target/scala-2.13/antimirov-web-fastopt.js"></script> –->
+
+    <!-- Include Scala.js prod code -->
+    <script type="text/javascript" src="./target/scala-2.13/antimirov-web-opt.js"></script>
+
+  </body>
+</html>
