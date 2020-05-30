@@ -209,6 +209,24 @@ sealed abstract class Rx { lhs =>
     }
 
   /**
+   * Give an upper bound on the cardinality of this expression.
+   *
+   * The cardinality of a set is its size, in this case the number of
+   * strings matched by the regular expression. In expressions using
+   * the Kleene star operator the cardinality will often be unbounded.
+   *
+   * This method can only return an upper bound because the same
+   * string may be available by two different paths. For example
+   * ([ab][bc]|b*) has two ways to match the string 'bb'.
+   *
+   * Using the 'r.canonical.cardinality' may provide a tighter lower
+   * bound, but is not currently guaranteed to produce an exact
+   * cardinality.
+   */
+  def cardinality: Size =
+    pathCount(Size.Unbounded)
+
+  /**
    * Count the number of paths matched by the regular expression.
    *
    * Using Size.Unbounded for starSize calculates the "true" pathCount
@@ -220,8 +238,10 @@ sealed abstract class Rx { lhs =>
     this match {
       case Phi =>
         Size.Zero
-      case Empty | Letter(_) | Letters(_) =>
+      case Empty | Letter(_) =>
         Size.One
+      case Letters(cs) =>
+        Size(cs.size)
       case Choice(r1, r2) =>
         r1.pathCount(starSize) + r2.pathCount(starSize)
       case Concat(r1, r2) =>
@@ -236,6 +256,41 @@ sealed abstract class Rx { lhs =>
         Size.One
       case Var(_) =>
         sys.error("!")
+    }
+
+  /**
+   * The deepest number of nested Kleene star operators in this expression.
+   *
+   * This can be used as a complexity measure. It also has the
+   * interesting proprety that (starDepth + 1) gives you the number of
+   * derivatives you need to look at to understand how the count of
+   * matched paths grows as you expand stars 0 times, 1 time, etc.
+   */
+  def starDepth: Int =
+    this match {
+      case Phi | Empty | Letter(_) | Letters(_) => 0
+      case Choice(r1, r2) => Integer.max(r1.starDepth, r2.starDepth)
+      case Concat(r1, r2) => Integer.max(r1.starDepth, r2.starDepth)
+      case Star(r) => r.starDepth + 1
+      case Repeat(r, _, _) => r.starDepth
+      case Var(_) => sys.error("!")
+    }
+
+  /**
+   * Represent the cardinality of this expression as a string.
+   *
+   * For finite cardinalities, just return that number.
+   *
+   * For infinite star depths, we show ∞ and then display pathCount(i)
+   * for i from 0 to starDepth.
+   */
+  def cardRepr: String =
+    cardinality match {
+      case Size.Unbounded =>
+        val terms = (0 to starDepth).map(i => pathCount(Size(i)).toString)
+        terms.mkString("∞ (", ", ", ", ...)")
+      case sz =>
+        sz.approxString
     }
 
   /**

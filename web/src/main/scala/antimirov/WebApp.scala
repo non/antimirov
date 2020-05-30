@@ -97,18 +97,22 @@ object WebApp {
 
     alphaRx match {
       case Some(a) =>
+        writeInto("alpha-card", text(a.cardRepr))
         writeInto("not-alpha", text((~a).toString))
         writeInto("str-in-alpha", text(a.accepts(str).toString))
       case None =>
+        writeInto("alpha-card", errorText(alphaError))
         writeInto("not-alpha", errorText(alphaError))
         writeInto("str-in-alpha", errorText(alphaError))
     }
 
     betaRx match {
       case Some(b) =>
+        writeInto("beta-card", text(b.cardRepr))
         writeInto("not-beta", text((~b).toString))
         writeInto("str-in-beta", text(b.accepts(str).toString))
       case None =>
+        writeInto("beta-card", errorText(betaError))
         writeInto("not-beta", errorText(betaError))
         writeInto("str-in-beta", errorText(betaError))
     }
