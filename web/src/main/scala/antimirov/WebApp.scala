@@ -61,24 +61,6 @@ object WebApp {
     ()
   }
 
-  def sample(rx: Rx): String = {
-    val it = Rx.elementsOf(rx).iterator
-    var n = 0
-    val sb = new StringBuilder
-    sb.append("{ ")
-    while(it.hasNext && n < 10 && sb.length < 80) {
-      if (n > 0) sb.append(", ")
-      sb.append(Rx.escape(it.next))
-      n += 1
-    }
-    if (it.hasNext) {
-      sb.append(", ... }")
-    } else {
-      sb.append(" }")
-    }
-    sb.toString
-  }
-
   def updateAll(): Unit = {
     val alpha: String = document.getElementById("alpha").asInstanceOf[html.TextArea].value
     val beta: String = document.getElementById("beta").asInstanceOf[html.TextArea].value
@@ -116,12 +98,10 @@ object WebApp {
     alphaRx match {
       case Some(a) =>
         writeInto("alpha-card", text(a.cardRepr))
-        writeInto("alpha-samples", sample(a))
         writeInto("not-alpha", text((~a).toString))
         writeInto("str-in-alpha", text(a.accepts(str).toString))
       case None =>
         writeInto("alpha-card", errorText(alphaError))
-        writeInto("alpha-samples", "")
         writeInto("not-alpha", errorText(alphaError))
         writeInto("str-in-alpha", errorText(alphaError))
     }
@@ -129,12 +109,10 @@ object WebApp {
     betaRx match {
       case Some(b) =>
         writeInto("beta-card", text(b.cardRepr))
-        writeInto("beta-samples", sample(b))
         writeInto("not-beta", text((~b).toString))
         writeInto("str-in-beta", text(b.accepts(str).toString))
       case None =>
         writeInto("beta-card", errorText(betaError))
-        writeInto("beta-samples", "")
         writeInto("not-beta", errorText(betaError))
         writeInto("str-in-beta", errorText(betaError))
     }
