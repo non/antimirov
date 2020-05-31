@@ -209,51 +209,40 @@ sealed abstract class Rx { lhs =>
     }
 
   /**
-   * Give an upper bound on the cardinality of this expression.
+   * Compute the size of the set of strings matched by this
+   * regular expression.
    *
-   * The cardinality of a set is its size, in this case the number of
-   * strings matched by the regular expression. In expressions using
-   * the Kleene star operator the cardinality will often be unbounded.
+   * In expressions using the Kleene star operator the cardinality
+   * will often be unbounded, since the set is infinite (at least in
+   * theory). To get a sense of the relative complexity of an
+   * expression using Kleene stars, consider exploring how the values
+   * of `limitStars(i).cardinality` increase as `i` does.
    *
-   * This method can only return an upper bound because the same
-   * string may be available by two different paths. For example
-   * ([ab][bc]|b*) has two ways to match the string 'bb'.
-   *
-   * Using the 'r.canonical.cardinality' may provide a tighter lower
-   * bound, but is not currently guaranteed to produce an exact
-   * cardinality.
+   * This method traverses the expression to avoid double-counting the
+   * same string which can be produced by two different paths
    */
   def cardinality: Size =
-    pathCount(Size.Unbounded)
+    Rx.cardinality(this)
 
   /**
-   * Count the number of paths matched by the regular expression.
+   * Limit applications of the Kleene star operator.
    *
-   * Using Size.Unbounded for starSize calculates the "true" pathCount
-   * (since the Kleene star operator is unbounded). Using a finite
-   * number for starSize allows us to distinguish regexes that use the
-   * Kleene star with different branching factors.
+   * Replaces `Star(r)` nodes with `Repeat(r, 0, count)` nodes. This
+   * has the effect of limiting any Kleene star in the expression to
+   * being expanded at most `count` times.
    */
-  def pathCount(starSize: Size): Size =
+  def limitStars(count: Int): Rx =
     this match {
-      case Phi =>
-        Size.Zero
-      case Empty | Letter(_) =>
-        Size.One
-      case Letters(cs) =>
-        Size(cs.size)
+      case Phi | Empty | Letter(_) | Letters(_) =>
+        this
       case Choice(r1, r2) =>
-        r1.pathCount(starSize) + r2.pathCount(starSize)
+        r1.limitStars(count) + r2.limitStars(count)
       case Concat(r1, r2) =>
-        r1.pathCount(starSize) * r2.pathCount(starSize)
+        r1.limitStars(count) * r2.limitStars(count)
       case Star(r) =>
-        Size.One + r.pathCount(starSize) * starSize
-      case Repeat(r, m, n) if m > 0 =>
-        r.pathCount(starSize).pow(m) * Repeat(r, 0, n - m).pathCount(starSize)
-      case Repeat(r, _, n) if n > 0 =>
-        (Size.One + r.pathCount(starSize) * Repeat(r, 0, n - 1).pathCount(starSize))
-      case Repeat(r, _, _) =>
-        Size.One
+        r.limitStars(count).repeat(0, count)
+      case Repeat(r, m, n) =>
+        r.limitStars(count).repeat(m, n)
       case Var(_) =>
         sys.error("!")
     }
@@ -261,10 +250,7 @@ sealed abstract class Rx { lhs =>
   /**
    * The deepest number of nested Kleene star operators in this expression.
    *
-   * This can be used as a complexity measure. It also has the
-   * interesting proprety that (starDepth + 1) gives you the number of
-   * derivatives you need to look at to understand how the count of
-   * matched paths grows as you expand stars 0 times, 1 time, etc.
+   * This can be used as a complexity measure.
    */
   def starDepth: Int =
     this match {
@@ -281,14 +267,18 @@ sealed abstract class Rx { lhs =>
    *
    * For finite cardinalities, just return that number.
    *
-   * For infinite star depths, we show ∞ and then display pathCount(i)
-   * for i from 0 to starDepth.
+   * For infinite star depths, we show ∞ and then display the first
+   * ten cardinalities where we limit star expansions (0-9).
    */
   def cardRepr: String =
     cardinality match {
       case Size.Unbounded =>
-        val terms = (0 to starDepth).map(i => pathCount(Size(i)).toString)
-        terms.mkString("∞ (", ", ", ", ...)")
+        Iterator.from(0)
+          .map(i => limitStars(i).cardinality)
+          .zipWithIndex
+          .takeWhile { case (n, i) => n < Size(1000000000L) || i < 4 }
+          .map { case (n, _) => n.toString }
+          .mkString("∞ (", ", ", ", ...)")
       case sz =>
         sz.approxString
     }
@@ -865,6 +855,34 @@ object Rx {
   case class Repeat(r: Rx, m: Int, n: Int) extends Rx // repetition, n > 0, n >= m
   case class Star(r: Rx) extends Rx // kleene star
   case class Var private (x: Int) extends Rx // used internally
+
+  def cardinality(r: Rx): Size = {
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
+    def recur(r: Rx): Size =
+      r match {
+        case Phi =>
+          Size.Zero
+        case Empty =>
+          Size.One
+        case Star(_) =>
+          Size.Unbounded
+        case _ =>
+          def f(cs: LetterSet): Size = {
+            val c = cs.minOption.get
+            val d = derivCache.getOrElseUpdate((r, c), r.deriv(c))
+            Size(cs.size) * recur(d)
+          }
+          var total = Size.Zero
+          val it = r.firstSet.iterator
+          while (total.isFinite && it.hasNext) {
+            total += f(it.next)
+          }
+
+          if (r.acceptsEmpty) total += Size.One
+          total
+      }
+    recur(r)
+  }
 
   def canonicalize(r: Rx): Rx = {
     val derivCache = mutable.Map.empty[(Rx, Char), Rx]

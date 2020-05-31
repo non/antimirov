@@ -17,6 +17,12 @@ sealed abstract class Size { lhs =>
 
   import Size.{Small, Big, Unbounded}
 
+  def isFinite: Boolean =
+    this match {
+      case Unbounded => false
+      case _ => true
+    }
+
   private def toBigInt: BigInt =
     this match {
       case Unbounded => sys.error("!")
