@@ -222,7 +222,7 @@ sealed abstract class Rx { lhs =>
    * same string which can be produced by two different paths
    */
   def cardinality: Size =
-    Rx.cardinality(this)
+    Rx.cardinalityOf(this)
 
   /**
    * Limit applications of the Kleene star operator.
@@ -856,9 +856,9 @@ object Rx {
   case class Star(r: Rx) extends Rx // kleene star
   case class Var private (x: Int) extends Rx // used internally
 
-  def cardinality(r: Rx): Size = {
+  def cardinalityOf(r: Rx): Size = {
     val derivCache = mutable.Map.empty[(Rx, Char), Rx]
-    def recur(r: Rx): Size =
+    def recur(r: Rx, seen: Set[Rx]): Size =
       r match {
         case Phi =>
           Size.Zero
@@ -866,11 +866,14 @@ object Rx {
           Size.One
         case Star(_) =>
           Size.Unbounded
+        case _ if seen(r) =>
+          Size.Unbounded
         case _ =>
+          val seen2 = seen + r
           def f(cs: LetterSet): Size = {
             val c = cs.minOption.get
             val d = derivCache.getOrElseUpdate((r, c), r.deriv(c))
-            Size(cs.size) * recur(d)
+            Size(cs.size) * recur(d, seen2)
           }
           var total = Size.Zero
           val it = r.firstSet.iterator
@@ -881,7 +884,7 @@ object Rx {
           if (r.acceptsEmpty) total += Size.One
           total
       }
-    recur(r)
+    recur(r, Set.empty)
   }
 
   def canonicalize(r: Rx): Rx = {

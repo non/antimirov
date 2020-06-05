@@ -91,19 +91,15 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     Claim(xyy >= x) :| s"$xyy >= $x"
   }
 
-  // property("regression") = {
-  //   val x = Rx.parse("am[a-z]*")
-  //   val y = Rx.parse("ik[a-z]*|ge")
-  //   val z = Rx.parse("qcsga")
-  // 
-  //   val lhs = x * (y + z)
-  //   val rhs = (x * y) + (x * z)
-  // 
-  //   println(s"lhs = $lhs")
-  //   println(s"rhs = $rhs")
-  // 
-  //   timer("dist")(lhs =?= rhs)
-  // }
+  property("regression") = {
+    val x = Rx.parse("k(sww|((ba)*{1,2}))")
+    try {
+      x.cardinality >= Size.Zero
+    } catch { case e: Throwable =>
+      e.printStackTrace()
+      false
+    }
+  }
 
   timedProp("U - (U - x) = x", genRx) { x =>
     (U - (U - x)) =?= x
@@ -160,6 +156,19 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     val lhs = x subsetOf y
     val rhs = ((x & y) === x)
     Claim(lhs == rhs) :| s"($x <= $y) = (${x & y} = $x)"
+  }
+
+  timedProp("(x < y) = (~x > ~y)", genRx, genRx) { (x, y) =>
+    Claim((x < y) == ((~x) > (~y)))
+  }
+
+  timedProp("r.reverse accepts reversed strings", genRxAndStr) { case (x, lst) =>
+    val r = x.reverse
+    lst.forall(s => r.accepts(s.reverse))
+  }
+
+  timedProp("r.canonical = r", genRx) { r =>
+    Claim(r.canonical === r)
   }
 
   timedProp("x <= y -> y accepts x", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
@@ -222,4 +231,26 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     val lst = lstx | lsty
     comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
   }
+
+  timedProp("cardinality matches star-depth", genRx) { r =>
+    Claim((r.cardinality == Size.Unbounded) == (r.starDepth > 0))
+  }
+
+  property("cardRepr") = {
+    val r = Rx.parse(".*")
+    Claim(r.cardRepr.startsWith("∞"))
+  }
+
+  property("cardinality") = {
+    val r = Rx.parse(".*")
+    Claim(r.cardinality == Size.Unbounded)
+  }
+
+  // timedProp("cardinality ~ cardRepr", genRx) { r =>
+  //   if (r.cardinality == Size.Unbounded) {
+  //     Claim(r.cardRepr.startsWith("∞"))
+  //   } else {
+  //     Claim(r.cardinality.approxString == r.cardRepr)
+  //   }
+  // }
 }
