@@ -25,9 +25,11 @@ sealed abstract class Size { lhs =>
 
   private def toBigInt: BigInt =
     this match {
-      case Unbounded => sys.error("!")
       case Big(n) => n
       case Small(n) => BigInt(n)
+      // $COVERAGE-OFF$
+      case Unbounded => sys.error("impossible")
+      // $COVERAGE-ON$
     }
 
   def +(rhs: Size): Size =
@@ -89,6 +91,7 @@ sealed abstract class Size { lhs =>
       if (num < 1000000) {
         num.toString
       } else {
+        // TODO: calculate log10 to do this more efficiently
         var n = num
         var k = 0
         // make sure n won't round up to 1000 once we exit the loop
@@ -157,10 +160,14 @@ object Size {
 
   def apply(n: BigInt): Size = {
     require(n.signum >= 0)
-    Big(n)
+    if (n.isValidLong) Small(n.toLong) else Big(n)
   }
 
+  // for Small(n) we require 0 <= n.
   case class Small private[antimirov] (n: Long) extends Size
+
+  // for Big(n) we require Long.MaxValue < n.
   case class Big private[antimirov] (n: BigInt) extends Size
+
   case object Unbounded extends Size
 }

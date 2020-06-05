@@ -1,7 +1,6 @@
 package antimirov
 
 import java.util.Arrays
-import scala.collection.immutable.NumericRange
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
@@ -13,6 +12,31 @@ class LetterMap[A](
   private[antimirov] val keys: Array[Char],
   private[antimirov] val vals: Array[A]
 ) { lhs =>
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case lm: LetterMap[A] =>
+        if (!Arrays.equals(this.keys, lm.keys)) return false
+        if (vals.length != lm.vals.length) return false
+        var i = 0
+        while (i < vals.length) {
+          if (vals(i) != lm.vals(i)) return false
+          i += 1
+        }
+        true
+      case _ =>
+        false
+    }
+
+  override def hashCode: Int = {
+    var n = 0xc001d065
+    var i = 0
+    while (i < vals.length) {
+      n = (n * 84499) + vals(i).hashCode
+      i += 1
+    }
+    Arrays.hashCode(keys) + n
+  }
 
   def isEmpty: Boolean = keys.length == 0
 
@@ -86,10 +110,7 @@ object LetterMap {
     new LetterMap(new Array[Char](0), new Array[A](0))
 
   def apply[A: ClassTag](c: Char, a: A): LetterMap[A] =
-    new LetterMap(Array(c, c), Array(a))
-
-  def apply[A: ClassTag](cs: NumericRange[Char], a: A): LetterMap[A] =
-    LetterMap(LetterSet(cs), a)
+    apply(LetterSet(c), a)
 
   def apply[A: ClassTag](keys: LetterSet, a: A): LetterMap[A] = {
     val ks = keys.array

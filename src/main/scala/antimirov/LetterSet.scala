@@ -176,7 +176,9 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
         if (i < span) return (c1 + i).toChar
         i -= span
       }
+      // $COVERAGE-OFF$
       sys.error(s"impossible: exhausted ranges with i=$i")
+      // $COVERAGE-ON$
     }
 
   def intersects(rhs: LetterSet): Boolean =
@@ -436,27 +438,8 @@ object LetterSet {
   val Full: LetterSet =
     new LetterSet(Array(Char.MinValue, Char.MaxValue))
 
-  def fromIterator(it: Iterator[(Char, Char)]): LetterSet = {
-    var i = -1
-    val buf = mutable.ArrayBuffer.empty[Char]
-    while (it.hasNext) {
-      val (c1, c2) = it.next
-      if (i > 0 && buf(i) == c1) {
-        buf(i) = c2
-      } else {
-        buf.append(c1)
-        buf.append(c2)
-        i += 2
-      }
-    }
-    new LetterSet(buf.toArray)
-  }
-
   def escape(c: Char): String =
     Chars.escape(c, Chars.RangeSpecial)
-
-  def union(x: LetterSet, y: LetterSet): LetterSet =
-    LetterSet.fromIterator(diff(x, y).map(_.value))
 
   // assumes lhs and rhs are disjoint
   def venn(lhs: List[LetterSet], rhs: List[LetterSet]): List[Diff[LetterSet]] = {

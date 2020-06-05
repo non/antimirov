@@ -169,7 +169,9 @@ object Nfa {
           case Rx.Repeat(r, _, _) =>
             recur(Rx.Empty, n)
           case v @ Rx.Var(_) =>
+            // $COVERAGE-OFF$
             sys.error(s"illegal var node found: $v")
+            // $COVERAGE-ON$
         }
       recur(rx, 0)._1
     }

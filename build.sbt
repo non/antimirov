@@ -93,8 +93,10 @@ lazy val root = project
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("."))
-  .settings(name := "antimirov")
   .settings(antimirovSettings: _*)
+  .settings(
+    name := "antimirov",
+    coverageEnabled := true)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
     parallelExecution := false,
@@ -108,9 +110,11 @@ lazy val check = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("check"))
   .dependsOn(core)
-  .settings(name := "antimirov-check")
   .settings(antimirovSettings: _*)
-  .settings(libraryDependencies += ScalaCheck)
+  .settings(
+    name := "antimirov-check",
+    coverageEnabled := true,
+    libraryDependencies += ScalaCheck)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
     parallelExecution := false,

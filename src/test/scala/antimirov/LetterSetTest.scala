@@ -2,21 +2,32 @@ package antimirov
 
 import org.scalacheck.{Arbitrary, Gen, Prop, Properties, Test}
 import org.typelevel.claimant.Claim
+import scala.reflect.ClassTag
+import scala.util.Try
 
 import Arbitrary.arbitrary
 import Prop.{forAllNoShrink => forAll}
 
-abstract class LetterSetTesting(name: String) extends Properties(name) {
-
+trait AlphaTesting {
   def genChar: Gen[Char]
 
-  override def overrideParameters(ps: Test.Parameters): Test.Parameters =
-    ps.withMinSuccessfulTests(100)
+  val genLetterSet: Gen[LetterSet] =
+    Gen.buildableOf[Set[Char], Char](genChar).map(LetterSet(_))
 
-  implicit val arbitraryLetterSet: Arbitrary[LetterSet] = {
-    val genSet = Gen.buildableOf[Set[Char], Char](genChar)
-    Arbitrary(genSet.map(LetterSet(_)))
+  implicit val arbitraryLetterSet: Arbitrary[LetterSet] =
+    Arbitrary(genLetterSet)
+
+  def genLetterMap[A: ClassTag](ga: Gen[A]): Gen[LetterMap[A]] = {
+    val genPair = Gen.zip(genLetterSet, ga)
+    val genAtom = genPair.map { case (cs, a) => LetterMap(cs, a) }
+    for {
+      n <- Gen.choose(1, 5)
+      xs <- Gen.listOfN(n, genAtom)
+    } yield xs.foldLeft(LetterMap.empty[A])(_ ++ _)
   }
+
+  implicit def arbitraryLetterMap[A: Arbitrary: ClassTag]: Arbitrary[LetterMap[A]] =
+    Arbitrary(genLetterMap(arbitrary[A]))
 
   case class Alpha(value: Char)
 
@@ -24,6 +35,12 @@ abstract class LetterSetTesting(name: String) extends Properties(name) {
     implicit val arbitraryAlpha: Arbitrary[Alpha] =
       Arbitrary(genChar.map(Alpha(_)))
   }
+}
+
+abstract class LetterSetTesting(name: String) extends Properties(name) with AlphaTesting {
+
+  override def overrideParameters(ps: Test.Parameters): Test.Parameters =
+    ps.withMinSuccessfulTests(100)
 
   property("size and contains (alpha)") =
     forAll { (cs: List[Alpha]) =>
@@ -32,14 +49,10 @@ abstract class LetterSetTesting(name: String) extends Properties(name) {
       Claim(lset.size == cset.size) && Claim(cset.forall(lset.contains))
     }
 
-  property("size and contains (full)") = {
-    val gcs = Gen.listOf(Gen.choose(Char.MinValue, Char.MaxValue))
-    forAll(gcs) { (cs: List[Char]) =>
-      val cset = cs.toSet
-      val lset = LetterSet(cset)
-      Claim(lset.size == cset.size) && Claim(cset.forall(lset.contains))
+  property("contains = apply") =
+    forAll { (x: LetterSet, c: Char) =>
+      Claim(x(c) == x.contains(c))
     }
-  }
 
   property("equals and hashCode") =
     forAll { (set1: LetterSet, set2: LetterSet) =>
@@ -306,6 +319,58 @@ abstract class LetterSetTesting(name: String) extends Properties(name) {
         .foldLeft(LetterSet.Empty)(_ | _)
       val rhs = (w | x | y | z)
       Claim(lhs == rhs)
+    }
+
+  property("LetterSet != Set") =
+    forAll { (x: LetterSet, y: Set[Char]) =>
+      Claim(x != y)
+    }
+
+  property("forall") =
+    forAll { (set: Set[Char], p: Char => Boolean) =>
+      val ls = LetterSet(set)
+      Claim(ls.forall(p) == set.forall(p))
+    }
+
+  property("minOption") =
+    forAll { (set: Set[Char]) =>
+      val ls = LetterSet(set)
+      Claim(ls.minOption == set.minOption)
+    }
+
+  property("maxOption") =
+    forAll { (set: Set[Char]) =>
+      val ls = LetterSet(set)
+      Claim(ls.maxOption == set.maxOption)
+    }
+
+  property("isSingleton") =
+    forAll { (set: Set[Char]) =>
+      val ls = LetterSet(set)
+      Claim(ls.isSingleton == (set.size == 1))
+    }
+
+  property("intersects") =
+    forAll { (x: LetterSet, y: LetterSet) =>
+      Claim((x intersects y) == (x & y).nonEmpty)
+    }
+
+  property("get") =
+    forAll { (x: LetterSet, nn0: Int, nn1: Int) =>
+      val (n0, n1) = (nn0 & 0x7fffffff, nn1 & 0x7fffffff)
+      val (i, j) = if (n0 <= n1) (n0, n1) else (n1, n0)
+      if (j >= x.size) {
+        Claim(Try(x.get(j)).isFailure)
+      } else {
+        Claim(x.get(i) <= x.get(j))
+      }
+    }
+
+  property("CharSet(x to y) = CharSet(x until (y + 1))") =
+    forAll { (c1: Char, c2: Char) =>
+      val (x, y) = if (c1 <= c2) (c1, c2) else (c2, c1)
+      if (y == Char.MaxValue) Prop(true)
+      else Claim(LetterSet(x to y) == LetterSet(x until (y + 1).toChar))
     }
 
   // TODO: test venn

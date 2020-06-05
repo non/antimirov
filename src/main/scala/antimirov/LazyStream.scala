@@ -11,7 +11,10 @@ sealed abstract class LazyStream[+A] { self =>
     }
 
   def isEmpty: Boolean =
-    !nonEmpty
+    force match {
+      case Cons(_, _) => false
+      case Empty => true
+    }
 
   def nonEmpty: Boolean =
     force match {
@@ -32,6 +35,9 @@ sealed abstract class LazyStream[+A] { self =>
       case Empty => Empty
       case d: Defer[A] => LazyStream.defer(d.force.flatMap(f))
     }
+
+  def toList: List[A] =
+    iterator.toList
 
   def iterator: Iterator[A] =
     new Iterator[A] {
@@ -86,6 +92,9 @@ object LazyStream {
         val ln = n / 2
         merge(mergeAll(xss.slice(0, ln))(lt), mergeAll(xss.slice(ln, n))(lt))(lt)
     }
+
+  def fromIterable[A](as: Iterable[A]): LazyStream[A] =
+    fromIterator(as.iterator)
 
   def fromIterator[A](it: Iterator[A]): LazyStream[A] =
     new Defer(if (it.hasNext) Cons(it.next, fromIterator(it)) else Empty)
