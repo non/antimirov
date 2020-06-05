@@ -2,25 +2,25 @@ matrix:
   include:
     - scala: 2.13.2
       language: scala
-      jdk: oraclejdk8
+      jdk: openjdk8
       env: PLATFORM="jvm"
       script: sbt "++2.13.2" coverage coreJVM/test coverageReport && codecov
 
     - scala: 2.13.2
       language: scala
-      jdk: oraclejdk8
+      jdk: openjdk8
       env: PLATFORM="js"
       script: sbt "++2.13.2" coreJS/test
 
     - scala: 2.12.11
       language: scala
-      jdk: oraclejdk8
+      jdk: openjdk8
       env: PLATFORM="jvm"
       script: sbt "++2.12.11" coreJVM/test
 
     - scala: 2.12.11
       language: scala
-      jdk: oraclejdk8
+      jdk: openjdk8
       env: PLATFORM="js"
       script: sbt "++2.12.11" coreJS/test
 
