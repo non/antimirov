@@ -1,0 +1,43 @@
+matrix:
+  include:
+    - scala: 2.13.2
+      language: scala
+      jdk: oraclejdk8
+      env: PLATFORM="jvm"
+      script: sbt "++2.13.2" coverage coreJVM/test coverageReport && codecov
+
+    - scala: 2.13.2
+      language: scala
+      jdk: oraclejdk8
+      env: PLATFORM="js"
+      script: sbt "++2.13.2" coreJS/test
+
+    - scala: 2.12.11
+      language: scala
+      jdk: oraclejdk8
+      env: PLATFORM="jvm"
+      script: sbt "++2.12.11" coreJVM/test
+
+    - scala: 2.12.11
+      language: scala
+      jdk: oraclejdk8
+      env: PLATFORM="js"
+      script: sbt "++2.12.11" coreJS/test
+
+install:
+ - pip install --user codecov
+
+cache:
+  directories:
+  - $HOME/.cache
+  - $HOME/.coursier
+  - $HOME/.ivy2/cache
+  - $HOME/.m2
+  - $HOME/.nvm
+  - $HOME/.sbt
+
+before_cache:
+  - du -h -d 1 $HOME/.ivy2/cache
+  - du -h -d 2 $HOME/.sbt/
+  - find $HOME/.sbt -name "*.lock" -type f -delete
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -type f -delete
