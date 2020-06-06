@@ -262,13 +262,15 @@ sealed abstract class Rx { lhs =>
       case Var(_) => sys.error("!")
     }
 
+  private val ReprLimit = Size(1000000000L)
+
   /**
    * Represent the cardinality of this expression as a string.
    *
    * For finite cardinalities, just return that number.
    *
    * For infinite star depths, we show ∞ and then display the first
-   * ten cardinalities where we limit star expansions (0-9).
+   * cardinalities where we limit star expansions.
    */
   def cardRepr: String =
     cardinality match {
@@ -276,7 +278,7 @@ sealed abstract class Rx { lhs =>
         Iterator.from(0)
           .map(i => limitStars(i).cardinality)
           .zipWithIndex
-          .takeWhile { case (n, i) => n < Size(1000000000L) || i < 4 }
+          .takeWhile { case (n, i) => i < 6 && (n < ReprLimit || i < 3) }
           .map { case (n, _) => n.toString }
           .mkString("∞ (", ", ", ", ...)")
       case sz =>
@@ -997,7 +999,7 @@ object Rx {
                 Rx(cs) * recur(cnt + 1, env2, (d1, d2))
               }
               val rr = Rx.choice(alpha.map(f))
-              val rr2 = if (r1.acceptsEmpty && !r2.acceptsEmpty) rr + Empty else rr
+              val rr2 = if (r1.acceptsEmpty && r2.rejectsEmpty) rr + Empty else rr
               rr2.resolve(cnt)
           }
       }
@@ -1012,8 +1014,8 @@ object Rx {
       pair match {
         case (r1, Phi) => r1
         case (Phi, r2) => r2
-        case (Empty, r2) if !r2.acceptsEmpty => r2 + Empty
-        case (r1, Empty) if !r1.acceptsEmpty => r1 + Empty
+        case (Empty, r2) if r2.rejectsEmpty => r2 + Empty
+        case (r1, Empty) if r1.rejectsEmpty => r1 + Empty
         case (r1, r2) =>
           env.get(pair) match {
             case Some(res) =>

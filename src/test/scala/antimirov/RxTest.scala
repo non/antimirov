@@ -236,13 +236,11 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     Claim((r.cardinality == Size.Unbounded) == (r.starDepth > 0))
   }
 
-  property("cardRepr") = {
-    val r = Rx.parse(".*")
-    Claim(r.cardRepr.startsWith("∞"))
+  timedProp("cardRepr", genSmallRx) { r =>
+    Claim(r.cardRepr != "") // kind of bogus, just exercise the code
   }
 
   property("cardinality") = {
-    val r = Rx.parse(".*")
-    Claim(r.cardinality == Size.Unbounded)
+    Claim(Rx.parse(".*").cardinality == Size.Unbounded)
   }
 }
