@@ -70,29 +70,6 @@ object LazyStream {
       case Empty => rhs
     })
 
-  def merge[A](xs: LazyStream[A], ys: LazyStream[A])(lt: (A, A) => Boolean): LazyStream[A] =
-    defer((xs.force, ys.force) match {
-      case (Cons(hx, tx), Cons(hy, ty)) =>
-        if (lt(hx, hy)) Cons(hx, merge(tx, ys)(lt)) else Cons(hy, merge(xs, ty)(lt))
-      case (Empty, eys) =>
-        eys
-      case (exs, Empty) =>
-        exs
-    })
-
-  def mergeAll[A](xss: Vector[LazyStream[A]])(lt: (A, A) => Boolean): LazyStream[A] =
-    xss.size match {
-      case n if n < 1 =>
-        LazyStream.empty[A]
-      case 1 =>
-        xss(0)
-      case 2 =>
-        merge(xss(0), xss(1))(lt)
-      case n =>
-        val ln = n / 2
-        merge(mergeAll(xss.slice(0, ln))(lt), mergeAll(xss.slice(ln, n))(lt))(lt)
-    }
-
   def fromIterable[A](as: Iterable[A]): LazyStream[A] =
     fromIterator(as.iterator)
 

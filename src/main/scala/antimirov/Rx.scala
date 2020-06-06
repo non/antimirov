@@ -1036,39 +1036,6 @@ object Rx {
     recur(1, Map.empty, (r1, r2))
   }
 
-  def escape(s: String): String = {
-    val sb = new StringBuilder
-    var i = 0
-    sb.append("\"")
-    while (i < s.length) {
-      sb.append(LetterSet.escape(s.charAt(i)))
-      i += 1
-    }
-    sb.append("\"")
-    sb.toString
-  }
-
-  def elementsOf(r: Rx): LazyStream[String] = {
-    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
-    def recur(rx: Rx): LazyStream[String] =
-      rx match {
-        case Phi => LazyStream.empty[String]
-        case Empty => LazyStream("")
-        case _ =>
-          val alpha = rx.firstSet
-          def f(cs: LetterSet): LazyStream[String] = {
-            val c = cs.minOption.get
-            val d = derivCache.getOrElseUpdate((rx, c), rx.deriv(c))
-            val heads = LazyStream.fromIterator(cs.iterator)
-            heads.flatMap(h => recur(d).map(t => s"$h$t"))
-          }
-          var streams = alpha.iterator.map(f).toVector
-          if (rx.acceptsEmpty) streams = LazyStream("") +: streams
-          LazyStream.mergeAll(streams)((s1, s2) => s1.length < s2.length)
-      }
-    recur(r)
-  }
-
   /**
    * Return whether lhs is an improper subset of rhs or not.
    *

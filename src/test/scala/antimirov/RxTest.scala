@@ -245,12 +245,4 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     val r = Rx.parse(".*")
     Claim(r.cardinality == Size.Unbounded)
   }
-
-  // timedProp("cardinality ~ cardRepr", genRx) { r =>
-  //   if (r.cardinality == Size.Unbounded) {
-  //     Claim(r.cardRepr.startsWith("∞"))
-  //   } else {
-  //     Claim(r.cardinality.approxString == r.cardRepr)
-  //   }
-  // }
 }

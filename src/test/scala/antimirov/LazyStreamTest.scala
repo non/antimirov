@@ -63,14 +63,6 @@ object LazyStreamTest extends Properties("LazyStreamTest") {
     Prop(true)
   }
 
-  property("mergeAll") =
-    forAll { (xss0: Vector[List[Int]]) =>
-      val xss = xss0.map(xs => stream(xs.sorted))
-      val lhs = LazyStream.mergeAll(xss)(_ < _).toList
-      val rhs = xss0.flatten.sorted
-      Claim(lhs == rhs)
-    }
-
   property("empty iterator throws") = {
     val xs = LazyStream.empty[Int]
     val t = Try(xs.iterator.next)
