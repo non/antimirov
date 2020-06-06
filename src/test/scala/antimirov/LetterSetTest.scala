@@ -345,7 +345,11 @@ abstract class LetterSetTesting(name: String) extends Properties(name) with Alph
   property("maxOption") =
     forAll { (set: Set[Char]) =>
       val ls = LetterSet(set)
-      Claim(ls.maxOption == set.maxOption)
+      if (set.isEmpty) {
+        Claim(ls.maxOption == None)
+      } else {
+        Claim(ls.maxOption == Some(set.max))
+      }
     }
 
   property("isSingleton") =
