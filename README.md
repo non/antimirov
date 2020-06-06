@@ -1,3 +1,6 @@
+[![Build Status](https://api.travis-ci.org/non/antimirov.svg)](https://travis-ci.org/non/antimirov)
+[![codecov.io](http://codecov.io/github/non/antimirov/coverage.svg?branch=master)](http://codecov.io/github/non/antimirov?branch=master)
+
 ## Antimirov
 
 ### Dedication
