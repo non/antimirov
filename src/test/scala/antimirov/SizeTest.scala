@@ -88,4 +88,10 @@ object SizeTest extends Properties("SizeTest") { self =>
       val rhs = (x compare y) >= 0
       Claim(lhs == rhs)
     }
+
+  property("from BigInt") =
+    forAll { (x0: BigInt, y0: BigInt) =>
+      val (x, y) = (x0.abs, y0.abs)
+      Claim((Size(x) + Size(y)) == Size(x + y))
+    }
 }

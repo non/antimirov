@@ -44,6 +44,12 @@ object Parser {
   def fmap[A, B](pair: (A, Int))(f: A => B): (B, Int) =
     (f(pair._1), pair._2)
 
+  case class ParseError(pos: Int, msg: String)
+      extends Exception(s"at position $pos: $msg")
+
+  private def die(pos: Int, msg: String): Nothing =
+    throw new ParseError(pos, msg)
+
   def parse(s: String): Rx = {
 
     def peek(i: Int): Option[Char] =
@@ -61,7 +67,7 @@ object Parser {
           ()
         case o =>
           val x = o.map(_.toString).getOrElse("eof")
-          sys.error(s"at position $i, expected '$c' but got '$x'")
+          die(i, s"expected '$c' but got '$x'")
       }
 
     def parseRe(i: Int): (Rx, Int) = {
@@ -72,7 +78,7 @@ object Parser {
     def parseSimple(i: Int): (Rx, Int) = {
       val (rx0, j) = parseBasic(i)
       peek(j) match {
-        case Some('|') | Some(')') | None =>
+        case Some('|') | Some(')') | Some('}') | None =>
           (rx0, j)
         case Some(c) =>
           fmap(parseSimple(j))(rx0 * _)
@@ -102,7 +108,7 @@ object Parser {
         case Repeat2(sm, sn) =>
           val j = i + 3 + sm.length + sn.length
           ((sm.toInt, sn.toInt), j)
-        case _ => sys.error("invalid repetition")
+        case _ => die(i, "invalid repetition")
       }
 
     def parseAtomic(i: Int): (Rx, Int) =
@@ -123,25 +129,25 @@ object Parser {
             case Some(Chars.HexChars(t)) =>
               (Integer.parseInt(t, 16).toChar, i + 5)
             case Some(t) =>
-              sys.error(s"at position $i, expected 4 hex digits, got '$t'")
+              die(i, s"expected 4 hex digits, got '$t'")
             case None =>
               val t = s.substring(i)
-              sys.error(s"at position $i, expected 4 hex digits, got '$t'")
+              die(i, s"expected 4 hex digits, got '$t'")
           }
         case Some(c) if special(c) => (c, i + 1)
         case Some(c) if Chars.Decoded.contains(c) => (Chars.Decoded(c), i + 1)
-        case Some(c) => sys.error(s"at position $i, got invalid escape sequence: '\\$c'")
-        case None => sys.error(s"at position $i, expected character, got 'eof'")
+        case Some(c) => die(i, s"got invalid escape sequence: '\\$c'")
+        case None => die(i, s"expected character, got 'eof'")
       }
 
     def parseChar(i: Int): (Char, Int) =
       peek(i) match {
         case None =>
-          sys.error(s"at position $i, expected character, got 'eof'")
+          die(i, s"expected character, got 'eof'")
         case Some('\\') =>
           parseEscaped(i + 1, Chars.RangeSpecial)
         case Some(c) if Chars.RangeSpecial(c) =>
-          sys.error(s"at position $i, got illegal character '$c'")
+          die(i, s"got illegal character '$c'")
         case Some(c) =>
           (c, i + 1)
       }
@@ -175,7 +181,7 @@ object Parser {
     val (rx, i) = parseRe(0)
     peek(i) match {
       case None => ()
-      case Some(c) => sys.error(s"at position $i, expected 'eof' but got '$c'")
+      case Some(c) => die(i, s"expected 'eof' but got '$c'")
     }
     rx
   }

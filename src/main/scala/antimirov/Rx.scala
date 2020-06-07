@@ -75,6 +75,18 @@ sealed abstract class Rx { lhs =>
     }
 
   /**
+   * xyz
+   */
+  def plus: Rx =
+    this * this.star
+
+  /**
+   * zyx
+   */
+  def optional: Rx =
+    this + Empty
+
+  /**
    * Exponentiation operator.
    *
    * `x.pow(k)` is equivalent to `x * x *... * x` k times. This can be

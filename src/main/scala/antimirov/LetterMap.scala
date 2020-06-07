@@ -17,7 +17,9 @@ class LetterMap[A](
     that match {
       case lm: LetterMap[A] =>
         if (!Arrays.equals(this.keys, lm.keys)) return false
+        // $COVERAGE-OFF$
         if (vals.length != lm.vals.length) return false
+        // $COVERAGE-ON$
         var i = 0
         while (i < vals.length) {
           if (vals(i) != lm.vals(i)) return false

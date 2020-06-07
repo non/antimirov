@@ -24,7 +24,7 @@ object Chars {
       '\f' -> "\\f",
       '\r' -> "\\r")
 
-  val HexChars = "([0-9a-fA-f]{4})".r
+  val HexChars = "([0-9a-fA-F]{4})".r
 
   /**
    * Escape a character using the standard set of special regex
