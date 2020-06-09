@@ -10,7 +10,7 @@ object NfaTest extends Properties("NfaTest") with TimingProperties { self =>
 
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
-      .withMinSuccessfulTests(1000)
+      .withMinSuccessfulTests(100)
       //.withPropFilter(Some("regression"))
 
   override def scale: Long = 20L
@@ -21,18 +21,18 @@ object NfaTest extends Properties("NfaTest") with TimingProperties { self =>
     Gen.zip(genRxAndStr, arbitrary[Set[String]])
       .map { case ((rx, good), maybe) => (rx, good | maybe) }
 
-  timedProp("nfa accepts regex strings", genRxAndStrs) { case (r, lst) =>
+  timedProp("nfa accepts regex strings", genRxAndStrs) { case (r, set) =>
     val c = Nfa.fromRx(r)
-    lst.iterator.map { s =>
+    set.iterator.map { s =>
       val lhs = r.accepts(s)
       val rhs = c.accepts(s)
       Claim(lhs == rhs) :| s"failed to accept '$s'"
     }.foldLeft(Prop(true))(_ && _)
   }
 
-  timedProp("accepts = !rejects", genRxAndStrs) { case (r, lst) =>
+  timedProp("accepts = !rejects", genRxAndStrs) { case (r, set) =>
     val c = Nfa.fromRx(r)
-    lst.iterator.map { s =>
+    set.iterator.map { s =>
       Claim(c.rejects(s) != c.accepts(s))
     }.foldLeft(Prop(true))(_ && _)
   }
@@ -41,4 +41,7 @@ object NfaTest extends Properties("NfaTest") with TimingProperties { self =>
     val (nfa1, nfa2) = (Nfa.fromRx(r1), Nfa.fromRx(r2))
     Claim((nfa1 != nfa2) || (s"$nfa1" == s"$nfa2"))
   }
+
+  property("nfa regression #1") =
+    Claim(Rx.parse("[ab]b").toNfa.rejects("aa"))
 }

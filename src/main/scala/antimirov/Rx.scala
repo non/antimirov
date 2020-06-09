@@ -735,6 +735,12 @@ sealed abstract class Rx { lhs =>
    */
   def toScala: scala.util.matching.Regex =
     new scala.util.matching.Regex(reRepr)
+
+  /**
+   *
+   */
+  def toNfa: Nfa =
+    Nfa.fromRx(this)
 }
 
 object Rx {

@@ -40,6 +40,17 @@ class LetterMap[A](
     Arrays.hashCode(keys) + n
   }
 
+  def iterator: Iterator[((Char, Char), A)] =
+    new Iterator[((Char, Char), A)] {
+      var i = 0
+      def hasNext: Boolean = i < keys.length
+      def next(): ((Char, Char), A) = {
+        val item = ((keys(i), keys(i + 1)), vals(i >>> 1))
+        i += 2
+        item
+      }
+    }
+
   def isEmpty: Boolean = keys.length == 0
 
   def nonEmpty: Boolean = keys.length != 0

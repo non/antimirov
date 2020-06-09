@@ -70,6 +70,23 @@ case class Nfa(
     !accepts(s)
 
   /**
+   *
+   */
+  def followAll(st0: BitSet): LetterMap[BitSet] =
+    edges.mapValues { array =>
+      var i = 0
+      val st1 = BitSet.empty(size)
+      while (i < array.length) {
+        if (st0(i)) {
+          val bs = array(i)
+          if (bs != null) st1 |= array(i)
+        }
+        i += 1
+      }
+      st1
+    }
+
+  /**
    * Given a bitset of current states and a character of input,
    * compute the bitset of future states (if any).
    *
@@ -106,6 +123,9 @@ case class Nfa(
       case None =>
         None
     }
+
+  def toDfa: Dfa =
+    Dfa.fromNfa(this)
 }
 
 object Nfa {
@@ -122,58 +142,62 @@ object Nfa {
       NfaBuilder(start, end, Map(start -> Map.empty, end -> Map.empty))
 
     def fromRx(rx: Rx): NfaBuilder = {
-      def recur(r: Rx, n: Int): (NfaBuilder, Int) =
+      val index = new Index()
+      def recur(r: Rx): NfaBuilder =
         r match {
           case Rx.Phi =>
-            (NfaBuilder.alloc(n, n + 1), n + 2)
+            NfaBuilder.alloc(index.next(), index.next())
           case Rx.Empty =>
-            (NfaBuilder.alloc(n, n), n + 1)
+            val n = index.next()
+            NfaBuilder.alloc(n, n)
           case Rx.Letter(c) =>
-            (NfaBuilder.alloc(n, n + 1)
-              .addEdge(n, Some(LetterSet(c)), n + 1), n + 2)
+            val n0 = index.next()
+            val n1 = index.next()
+            NfaBuilder.alloc(n0, n1).addEdge(n0, Some(LetterSet(c)), n1)
           case Rx.Letters(cs) =>
-            (NfaBuilder.alloc(n, n + 1)
-              .addEdge(n, Some(cs), n + 1), n + 2)
+            val n0 = index.next()
+            val n1 = index.next()
+            NfaBuilder.alloc(n0, n1).addEdge(n0, Some(cs), n1)
           case Rx.Concat(r1, r2) =>
-            val (nfa1, n1) = recur(r1, n)
-            val (nfa2, n2) = recur(r2, n1)
-            (NfaBuilder.alloc(nfa1.start, nfa2.accept)
+            val nfa1 = recur(r1)
+            val nfa2 = recur(r2)
+            NfaBuilder.alloc(nfa1.start, nfa2.accept)
               .absorb(nfa1)
               .absorb(nfa2)
-              .addEdge(nfa1.accept, None, nfa2.start), n2)
+              .addEdge(nfa1.accept, None, nfa2.start)
           case Rx.Choice(r1, r2) =>
-            val start = n
-            val (nfa1, n1) = recur(r1, n + 1)
-            val (nfa2, n2) = recur(r2, n1)
-            val accept = n2
-            (NfaBuilder.alloc(start, accept)
+            val start = index.next()
+            val nfa1 = recur(r1)
+            val nfa2 = recur(r2)
+            val accept = index.next()
+            NfaBuilder.alloc(start, accept)
               .absorb(nfa1)
               .absorb(nfa2)
               .addEdge(start, None, nfa1.start)
               .addEdge(start, None, nfa2.start)
               .addEdge(nfa1.accept, None, accept)
-              .addEdge(nfa2.accept, None, accept), n2 + 1)
+              .addEdge(nfa2.accept, None, accept)
           case Rx.Star(r) =>
-            val start = n
-            val (nfa, n1) = recur(r, n + 1)
-            val accept = n1
-            (NfaBuilder.alloc(start, accept)
+            val start = index.next()
+            val nfa = recur(r)
+            val accept = index.next()
+            NfaBuilder.alloc(start, accept)
               .absorb(nfa)
               .addEdge(start, None, accept)
               .addEdge(start, None, nfa.start)
-              .addEdge(nfa.accept, None, start), n1 + 1)
+              .addEdge(nfa.accept, None, start)
           case Rx.Repeat(r, x, y) if x > 0 =>
-            recur(Rx.Concat(r, Rx.Repeat(r, x - 1, y - 1)), n)
+            recur(Rx.Concat(r, Rx.Repeat(r, x - 1, y - 1)))
           case Rx.Repeat(r, _, y) if y > 0 =>
-            recur(Rx.Choice(Rx.Empty, Rx.Concat(r, Rx.Repeat(r, 0, y - 1))), n)
+            recur(Rx.Choice(Rx.Empty, Rx.Concat(r, Rx.Repeat(r, 0, y - 1))))
           case Rx.Repeat(r, _, _) =>
-            recur(Rx.Empty, n)
+            recur(Rx.Empty)
           case v @ Rx.Var(_) =>
             // $COVERAGE-OFF$
             sys.error(s"illegal var node found: $v")
             // $COVERAGE-ON$
         }
-      recur(rx, 0)._1
+      recur(rx)
     }
   }
 
@@ -245,20 +269,26 @@ object Nfa {
           }.foldLeft(LetterMap.empty[Array[BitSet]])(_ ++ _)
         }
 
-      def f(acc: Array[BitSet], xs: Array[BitSet]): Array[BitSet] = {
+      def f(xs: Array[BitSet], ys: Array[BitSet]): Array[BitSet] = {
         var i = 0
-        while (i < xs.length) {
+        val out = new Array[BitSet](size)
+        while (i < ys.length) {
+          val y = ys(i)
           val x = xs(i)
-          if (x != null) {
-            if (acc(i) != null) acc(i) |= x
-            else acc(i) = x.copy()
+          out(i) = (x != null, y != null) match {
+            case (true, true) => x | y
+            case (true, false) => x
+            case (false, true) => y
+            case (false, false) => null
           }
           i += 1
         }
-        acc
+        out
       }
 
-      val edges = it.foldLeft(LetterMap.empty[Array[BitSet]])((acc, xs) => acc.merge(xs)(f))
+      val edges = it.foldLeft(LetterMap.empty[Array[BitSet]]) { (acc, xs) =>
+        acc.merge(xs)(f)
+      }
 
       Nfa(size, start, accept, edges)
     }
