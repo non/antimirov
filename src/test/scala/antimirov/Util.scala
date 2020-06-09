@@ -1,8 +1,9 @@
 package antimirov
 
-import org.scalacheck.{Gen, Prop, Properties}
+import org.scalacheck.{Arbitrary, Gen, Prop, Properties}
 import org.scalacheck.rng.Seed
 
+import Arbitrary.arbitrary
 import Prop.{forAllNoShrink => forAll}
 
 object Util {
@@ -177,6 +178,10 @@ object Util {
         case Some(g) => Gen.listOf(g).map(xs => (r, xs.toSet))
       }
     }
+
+  val genRxAndStrs: Gen[(Rx, Set[String])] =
+    Gen.zip(genRxAndStr, arbitrary[Set[String]])
+      .map { case ((rx, good), maybe) => (rx, good | maybe) }
 }
 
 trait TimingProperties { self: Properties =>

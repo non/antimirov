@@ -741,6 +741,12 @@ sealed abstract class Rx { lhs =>
    */
   def toNfa: Nfa =
     Nfa.fromRx(this)
+
+  /**
+   *
+   */
+  def toDfa: Dfa =
+    toNfa.toDfa
 }
 
 object Rx {

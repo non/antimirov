@@ -79,7 +79,7 @@ case class Nfa(
       while (i < array.length) {
         if (st0(i)) {
           val bs = array(i)
-          if (bs != null) st1 |= array(i)
+          if (bs != null) st1 |= bs
         }
         i += 1
       }
