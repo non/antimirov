@@ -239,42 +239,6 @@ object Nfa {
         case (nfa, (from, c, to)) => nfa.addEdge(from, c, to)
       }
 
-    def replace(before: Int, after: Int): NfaBuilder = {
-      val accept2 = if (accept == after) before else accept
-      NfaBuilder(start, accept2, edges.flatMap { case (k, m) =>
-        if (k == before) {
-          None
-        } else {
-          val k2 = if (k == after) before else k
-          Some((k2, m.map { case (ok, ov) =>
-            (ok, ov.map(x => if (x == after) before else x))
-          }))
-        }
-      })
-    }
-
-    private def epsilonOnly(n: Int): Option[Int] =
-      edges.get(n).filter(_.size == 1).flatMap(_.get(None).map(_.head))
-
-    def compress: NfaBuilder = {
-      def loop(bldr: NfaBuilder, queue: List[Int], seen: Set[Int]): NfaBuilder =
-        queue match {
-          case Nil =>
-            bldr
-          case n :: rest if seen(n) =>
-            loop(bldr, rest, seen)
-          case n :: rest =>
-            bldr.epsilonOnly(n) match {
-              case Some(nn) =>
-                loop(bldr.replace(n, nn), rest, seen)
-              case None =>
-                val ids = bldr.edges.get(n).toList.flatMap(_.values.flatMap(_.toList).toList)
-                loop(bldr, ids ::: rest, seen + n)
-            }
-        }
-      loop(this, List(start), Set.empty)
-    }
-
     /**
      * Build an Nfa from this NfaBuilder instance.
      *
