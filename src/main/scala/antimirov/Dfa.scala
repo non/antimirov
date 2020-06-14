@@ -139,8 +139,8 @@ object Dfa {
       P.iterator.flatMap { p =>
         if (p.nonEmpty) {
           val m = p.min
-          p.map(n => (n, m))
-        } else Set.empty
+          p.iterator.map(n => (n, m))
+        } else Iterator.empty
       }.toMap
 
     val bldr = new DfaBuilder[Int](0)
