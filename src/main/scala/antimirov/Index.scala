@@ -12,20 +12,17 @@ sealed class Index {
 }
 
 final class ValueIndex[A] extends Index {
-  private val valueToIndex = mutable.Map.empty[A, Int]
-  private val indexToValue = mutable.Map.empty[Int, A]
+
+  private val valueToIndex =
+    mutable.Map.empty[A, Int]
 
   def initialize(as: Iterable[A]): Unit =
-    as.foreach(a => indexOf(a))
+    as.foreach(indexOf)
 
   def indexOf(a: A): Int =
     valueToIndex.getOrElseUpdate(a, {
       val idx = this.next()
       valueToIndex(a) = idx
-      indexToValue(idx) = a
       idx
     })
-
-  def nameOf(n: Int): Option[A] =
-    indexToValue.get(n)
 }

@@ -159,7 +159,7 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
   }
 
   timedProp("(x < y) = (~x > ~y)", genRx, genRx) { (x, y) =>
-    Claim((x < y) == ((~x) > (~y)))
+    Claim((x properSubsetOf y) == ((~x) properSupersetOf (~y)))
   }
 
   timedProp("r.reverse accepts reversed strings", genRxAndStr) { case (x, lst) =>
@@ -236,6 +236,10 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     Claim((r.cardinality == Size.Unbounded) == (r.starDepth > 0))
   }
 
+  timedProp("scalaRepr", genRx) { r =>
+    Claim(r.scalaRepr != "") // kind of bogus, just exercise the code
+  }
+
   timedProp("cardRepr", genSmallRx) { r =>
     Claim(r.cardRepr != "") // kind of bogus, just exercise the code
   }
@@ -243,4 +247,5 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
   property("cardinality") = {
     Claim(Rx.parse(".*").cardinality == Size.Unbounded)
   }
+
 }

@@ -217,7 +217,9 @@ sealed abstract class Rx { lhs =>
       case Concat(r1, _) => r1.firstSet
       case Star(r) => r.firstSet
       case Repeat(r, _, _) => r.firstSet
+      // $COVERAGE-OFF$
       case Var(_) => sys.error("!")
+      // $COVERAGE-ON$
     }
 
   /**
@@ -256,7 +258,9 @@ sealed abstract class Rx { lhs =>
       case Repeat(r, m, n) =>
         r.limitStars(count).repeat(m, n)
       case Var(_) =>
+        // $COVERAGE-OFF$
         sys.error("!")
+        // $COVERAGE-ON$
     }
 
   /**
@@ -271,7 +275,9 @@ sealed abstract class Rx { lhs =>
       case Concat(r1, r2) => Integer.max(r1.starDepth, r2.starDepth)
       case Star(r) => r.starDepth + 1
       case Repeat(r, _, _) => r.starDepth
+      // $COVERAGE-OFF$
       case Var(_) => sys.error("!")
+      // $COVERAGE-ON$
     }
 
   private val ReprLimit = Size(1000000000L)
@@ -332,7 +338,9 @@ sealed abstract class Rx { lhs =>
         r.matchSizes.map { case (x, y) =>
           (x * Size(m), y * Size(n))
         }
+      // $COVERAGE-OFF$
       case Var(_) => sys.error("!")
+      // $COVERAGE-ON$
     }
 
   /**
@@ -501,7 +509,9 @@ sealed abstract class Rx { lhs =>
       case Repeat(r, m, _) => m == 0 || r.acceptsEmpty
       case Choice(r1, r2) => r1.acceptsEmpty || r2.acceptsEmpty
       case Concat(r1, r2) => r1.acceptsEmpty && r2.acceptsEmpty
+      // $COVERAGE-OFF$
       case Var(_) => sys.error("!")
+      // $COVERAGE-ON$
     }
 
   /**

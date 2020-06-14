@@ -10,7 +10,7 @@ object DfaTest extends Properties("DfaTest") with TimingProperties { self =>
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
       .withMinSuccessfulTests(100)
-      //.withPropFilter(Some("regression"))
+      //.withPropFilter(Some("dfa regression #2"))
 
   override def scale: Long = 20L
   override def enableTiming = true
@@ -42,4 +42,13 @@ object DfaTest extends Properties("DfaTest") with TimingProperties { self =>
 
   property("dfa regression #2") =
     Claim(Rx.parse("").toDfa.accepts(""))
+
+  property("minimization") =
+    Prop.forAllNoShrink(genRxAndStrs) { case (rx, set) =>
+      val dfa1 = rx.toDfa
+      val dfa2 = dfa1.minimize
+      set.iterator.map { s =>
+        Prop(dfa1.accepts(s) == dfa2.accepts(s)) :| s"disagree on $s"
+      }.foldLeft(Prop(true))(_ && _)
+    }
 }

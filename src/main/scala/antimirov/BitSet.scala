@@ -28,8 +28,14 @@ case class BitSet(maxSize: Int, array: Array[Int]) { lhs =>
     n
   }
 
+  def iterator: Iterator[Int] =
+    (0 until maxSize).iterator.filter(apply(_))
+
+  def toSet: Set[Int] =
+    iterator.toSet
+
   override def toString: String =
-    (0 until maxSize).filter(apply(_)).map(_.toString).mkString("BitSet(", ", ", ")")
+    iterator.map(_.toString).mkString("BitSet(", ", ", ")")
 
   override def equals(that: Any): Boolean =
     that match {

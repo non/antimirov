@@ -1,5 +1,7 @@
 package antimirov
 
+import scala.reflect.ClassTag
+
 // start = 0
 // size = edges.length
 case class Dfa(
@@ -12,12 +14,14 @@ case class Dfa(
       s"$label -> $lm"
     }.mkString("\n")
 
+  def get(n: Int, c: Char): Option[Int] =
+    edges(n).get(c)
+
   def accepts(s: String): Boolean = {
     var state = 0
     var i = 0
     while (i < s.length) {
-      val c = s.charAt(i)
-      edges(state).get(c) match {
+      get(state, s.charAt(i)) match {
         case Some(n) => state = n
         case None => return false
       }
@@ -28,12 +32,26 @@ case class Dfa(
 
   def rejects(s: String): Boolean =
     !accepts(s)
+
+  def minimize: Dfa =
+    Dfa.minimize(this)
+
+  private def alphabet: List[LetterSet] = {
+    def keySets(m: LetterMap[Int]): List[LetterSet] =
+      m.iterator.map { case ((c1, c2), _) => LetterSet(c1 to c2) }.toList
+    edges.iterator.map(keySets).toList match {
+      case h :: t =>
+        t.foldLeft(h)((x, y) => LetterSet.venn(x, y).map(_.value))
+      case Nil =>
+        Nil
+    }
+  }
 }
 
 object Dfa {
 
   def fromNfa(nfa: Nfa): Dfa = {
-    var bldr: DfaBuilder = DfaBuilder(0, nfa.accept, Map.empty, Set.empty, Map.empty)
+    val bldr = new DfaBuilder(nfa.start)
     var queue: List[BitSet] = List(nfa.start)
     var seen: Set[BitSet] = Set.empty
     while (queue.nonEmpty) {
@@ -41,9 +59,10 @@ object Dfa {
       queue = queue.tail
       if (!seen(st0)) {
         seen = seen + st0
-        bldr = bldr.addNode(st0)
+        bldr.addNode(st0, st0 intersects nfa.accept)
         nfa.followAll(st0).iterator.foreach { case ((c1, c2), st1) =>
-          bldr = bldr.addEdge(st0, LetterSet(c1 to c2), st1)
+          bldr.addNode(st1, st1 intersects nfa.accept)
+          bldr.addEdge(st0, LetterSet(c1 to c2), st1)
           queue = st1 :: queue
         }
       }
@@ -51,50 +70,93 @@ object Dfa {
     bldr.build
   }
 
-  // start = 0
-  case class DfaBuilder(
-    count: Int,
-    acceptBitSet: BitSet,
-    index: Map[BitSet, Int],
-    acceptSet: Set[Int],
-    edges: Map[Int, LetterMap[Int]]
-  ) {
+  class DfaBuilder[S: ClassTag](val start: S) {
 
-    def addNode(st: BitSet): DfaBuilder =
-      if (index.contains(st)) {
-        this
-      } else {
-        val idx = count
-        val count1 = count + 1
-        val index1 = index.updated(st, idx)
-        val accepting = st intersects acceptBitSet
-        val acceptSet1 = if (accepting) acceptSet + idx else acceptSet
-        DfaBuilder(count1, acceptBitSet, index1, acceptSet1, edges)
-      }
+    override def toString: String = s"DfaBuilder($start, $acceptSet, $edges)"
 
-    def addEdge(src: BitSet, keys: LetterSet, dst: BitSet): DfaBuilder = {
-      val b1 = this.addNode(src)
-      val b2 = b1.addNode(dst)
-      val (n1, n2) = (b2.index(src), b2.index(dst))
-      val rm = LetterMap(keys, n2)
-      val edges1 = b2.edges.updated(n1, edges.get(n1) match {
-        case Some(lm) =>
-          lm.merge(rm)((x, y) => if (x == y) x else sys.error(s"merging $lm and $rm failed ($x != $y)"))
-        case None =>
-          rm
-      })
-      b2.copy(edges = edges1)
+    var acceptSet: Set[S] =
+      Set.empty
+
+    var edges: Map[S, LetterMap[S]] =
+      Map(start -> LetterMap.empty[S])
+
+    def addNode(node: S, accepting: Boolean = false): Unit = {
+      if (accepting) acceptSet += node
+      if (edges.contains(node)) return ()
+      edges = edges.updated(node, LetterMap.empty[S])
+    }
+
+    def addEdge(src: S, keys: LetterSet, dst: S): Unit = {
+      addNode(src)
+      addNode(dst)
+      edges = edges.updated(src, edges(src) ++ LetterMap(keys, dst))
     }
 
     def build: Dfa = {
-      val accept1 = BitSet(count, acceptSet)
+      val vi = new ValueIndex[S]
+      require(vi.indexOf(start) == 0) // ensure start is 0
+      val count = edges.size
+      val accept1 = BitSet(count, acceptSet.map(vi.indexOf))
       val edges1 = new Array[LetterMap[Int]](count)
-      var i = 0
-      while (i < count) {
-        edges1(i) = edges.getOrElse(i, LetterMap.empty)
-        i += 1
+      edges.foreach { case (src, letterMap) =>
+        edges1(vi.indexOf(src)) = letterMap.mapValues(vi.indexOf)
       }
       Dfa(accept1, edges1)
     }
+  }
+
+  def minimize(dfa: Dfa): Dfa = {
+    type Partition = Set[Int]
+
+    val F: Partition = dfa.accept.toSet
+    val Q: Partition = (0 until dfa.edges.length).toSet
+    val Sigma: List[LetterSet] = dfa.alphabet
+
+    var P: Set[Partition] = Set(F, Q -- F)
+    var W: Set[Partition] = Set(F, Q -- F)
+
+    while (W.nonEmpty) {
+      val A = W.head
+      W = W - A
+      Sigma.foreach { cs =>
+        val c = cs.minOption.get
+        val X = Q.filter(s0 => dfa.get(s0, c).filter(A(_)).isDefined)
+        P.foreach { Y =>
+          val XaY = X & Y
+          val YmX = Y -- X
+          if (XaY.nonEmpty && YmX.nonEmpty) {
+            P = P - Y + XaY + YmX
+            W =
+              if (W(Y)) W - Y + XaY + YmX
+              else if (XaY.size <= YmX.size) W + XaY
+              else W + YmX
+          }
+        }
+      }
+    }
+
+    val m: Map[Int, Int] =
+      P.iterator.flatMap { p =>
+        if (p.nonEmpty) {
+          val m = p.min
+          p.map(n => (n, m))
+        } else Set.empty
+      }.toMap
+
+    val bldr = new DfaBuilder[Int](0)
+    var i = 0
+    while (i < dfa.edges.length) {
+      val x = m.getOrElse(i, i)
+      if (x == i) {
+        bldr.addNode(x, dfa.accept(x))
+        dfa.edges(i).iterator.foreach { case ((c1, c2), j) =>
+          val y = m.getOrElse(j, j)
+          bldr.addNode(y, dfa.accept(y))
+          bldr.addEdge(x, LetterSet(c1 to c2), y)
+        }
+      }
+      i += 1
+    }
+    bldr.build
   }
 }
