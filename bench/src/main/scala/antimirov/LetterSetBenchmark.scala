@@ -62,10 +62,6 @@ class LetterSetBenchmark {
     lsets.reduceLeft(_ | _)
 
   @Benchmark
-  def unionLSets2(): LetterSet =
-    lsets.reduceLeft(LetterSet.union)
-
-  @Benchmark
   def applyCSets(): Int =
     csets.foldLeft(0) { (n, cs) =>
       chars.foldLeft(n) { (nn, c) =>

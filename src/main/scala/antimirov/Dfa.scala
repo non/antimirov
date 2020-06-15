@@ -33,8 +33,60 @@ case class Dfa(
   def rejects(s: String): Boolean =
     !accepts(s)
 
-  def minimize: Dfa =
-    Dfa.minimize(this)
+  def minimize: Dfa = {
+    type Partition = Set[Int]
+
+    val F: Partition = accept.toSet
+    val Q: Partition = (0 until edges.length).toSet
+    val Sigma: List[LetterSet] = alphabet
+
+    var P: Set[Partition] = Set(F, Q -- F)
+    var W: Set[Partition] = Set(F, Q -- F)
+
+    while (W.nonEmpty) {
+      val A = W.head
+      W = W - A
+      Sigma.foreach { cs =>
+        val c = cs.minOption.get
+        val X = Q.filter(s0 => get(s0, c).filter(A(_)).isDefined)
+        P.foreach { Y =>
+          val XaY = X & Y
+          val YmX = Y -- X
+          if (XaY.nonEmpty && YmX.nonEmpty) {
+            P = P - Y + XaY + YmX
+            W =
+              if (W(Y)) W - Y + XaY + YmX
+              else if (XaY.size <= YmX.size) W + XaY
+              else W + YmX
+          }
+        }
+      }
+    }
+
+    val m: Map[Int, Int] =
+      P.iterator.flatMap { p =>
+        if (p.nonEmpty) {
+          val m = p.min
+          p.iterator.map(n => (n, m))
+        } else Iterator.empty
+      }.toMap
+
+    val bldr = new Dfa.DfaBuilder[Int](0)
+    var i = 0
+    while (i < edges.length) {
+      val x = m.getOrElse(i, i)
+      if (x == i) {
+        bldr.addNode(x, accept(x))
+        edges(i).iterator.foreach { case ((c1, c2), j) =>
+          val y = m.getOrElse(j, j)
+          bldr.addNode(y, accept(y))
+          bldr.addEdge(x, LetterSet(c1 to c2), y)
+        }
+      }
+      i += 1
+    }
+    bldr.build
+  }
 
   private def alphabet: List[LetterSet] = {
     def keySets(m: LetterMap[Int]): List[LetterSet] =
@@ -50,24 +102,29 @@ case class Dfa(
 
 object Dfa {
 
-  def fromNfa(nfa: Nfa): Dfa = {
-    val bldr = new DfaBuilder(nfa.start)
-    var queue: List[BitSet] = List(nfa.start)
-    var seen: Set[BitSet] = Set.empty
-    while (queue.nonEmpty) {
-      val st0 = queue.head
-      queue = queue.tail
-      if (!seen(st0)) {
-        seen = seen + st0
-        bldr.addNode(st0, st0 intersects nfa.accept)
-        nfa.followAll(st0).iterator.foreach { case ((c1, c2), st1) =>
-          bldr.addNode(st1, st1 intersects nfa.accept)
-          bldr.addEdge(st0, LetterSet(c1 to c2), st1)
-          queue = st1 :: queue
+  def fromNfa(nfa: Nfa): Dfa =
+    DfaBuilder.fromNfa(nfa).build
+
+  object DfaBuilder {
+    def fromNfa(nfa: Nfa): DfaBuilder[BitSet] = {
+      val bldr = new DfaBuilder(nfa.start)
+      var queue: List[BitSet] = List(nfa.start)
+      var seen: Set[BitSet] = Set.empty
+      while (queue.nonEmpty) {
+        val st0 = queue.head
+        queue = queue.tail
+        if (!seen(st0)) {
+          seen = seen + st0
+          bldr.addNode(st0, st0 intersects nfa.accept)
+          nfa.followAll(st0).iterator.foreach { case ((c1, c2), st1) =>
+            bldr.addNode(st1, st1 intersects nfa.accept)
+            bldr.addEdge(st0, LetterSet(c1 to c2), st1)
+            queue = st1 :: queue
+          }
         }
       }
+      bldr
     }
-    bldr.build
   }
 
   class DfaBuilder[S: ClassTag](val start: S) {
@@ -103,60 +160,5 @@ object Dfa {
       }
       Dfa(accept1, edges1)
     }
-  }
-
-  def minimize(dfa: Dfa): Dfa = {
-    type Partition = Set[Int]
-
-    val F: Partition = dfa.accept.toSet
-    val Q: Partition = (0 until dfa.edges.length).toSet
-    val Sigma: List[LetterSet] = dfa.alphabet
-
-    var P: Set[Partition] = Set(F, Q -- F)
-    var W: Set[Partition] = Set(F, Q -- F)
-
-    while (W.nonEmpty) {
-      val A = W.head
-      W = W - A
-      Sigma.foreach { cs =>
-        val c = cs.minOption.get
-        val X = Q.filter(s0 => dfa.get(s0, c).filter(A(_)).isDefined)
-        P.foreach { Y =>
-          val XaY = X & Y
-          val YmX = Y -- X
-          if (XaY.nonEmpty && YmX.nonEmpty) {
-            P = P - Y + XaY + YmX
-            W =
-              if (W(Y)) W - Y + XaY + YmX
-              else if (XaY.size <= YmX.size) W + XaY
-              else W + YmX
-          }
-        }
-      }
-    }
-
-    val m: Map[Int, Int] =
-      P.iterator.flatMap { p =>
-        if (p.nonEmpty) {
-          val m = p.min
-          p.iterator.map(n => (n, m))
-        } else Iterator.empty
-      }.toMap
-
-    val bldr = new DfaBuilder[Int](0)
-    var i = 0
-    while (i < dfa.edges.length) {
-      val x = m.getOrElse(i, i)
-      if (x == i) {
-        bldr.addNode(x, dfa.accept(x))
-        dfa.edges(i).iterator.foreach { case ((c1, c2), j) =>
-          val y = m.getOrElse(j, j)
-          bldr.addNode(y, dfa.accept(y))
-          bldr.addEdge(x, LetterSet(c1 to c2), y)
-        }
-      }
-      i += 1
-    }
-    bldr.build
   }
 }
