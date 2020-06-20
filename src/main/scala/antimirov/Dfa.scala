@@ -71,7 +71,7 @@ case class Dfa(
         } else Iterator.empty
       }.toMap
 
-    val bldr = new Dfa.DfaBuilder[Int](0)
+    val bldr = new Dfa.Builder[Int](0)
     var i = 0
     while (i < edges.length) {
       val x = m.getOrElse(i, i)
@@ -102,9 +102,9 @@ case class Dfa(
 
 object Dfa {
 
-  class DfaBuilder[S: ClassTag](val start: S) {
+  class Builder[S: ClassTag](val start: S) {
 
-    override def toString: String = s"DfaBuilder($start, $acceptSet, $edges)"
+    override def toString: String = s"Builder($start, $acceptSet, $edges)"
 
     var acceptSet: Set[S] =
       Set.empty

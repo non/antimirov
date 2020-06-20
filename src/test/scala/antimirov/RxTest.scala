@@ -248,4 +248,8 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     Claim(Rx.parse(".*").cardinality == Size.Unbounded)
   }
 
+  property("Rx(s) = Rx.concat(s.map(Rx(_)))") =
+    Prop.forAll { (s: String) =>
+      Claim(Rx(s) === Rx.concat(s.map(Rx(_))))
+    }
 }

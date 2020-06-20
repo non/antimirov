@@ -70,23 +70,6 @@ case class Nfa(
     !accepts(s)
 
   /**
-   *
-   */
-  def followAll(st0: BitSet): LetterMap[BitSet] =
-    edges.mapValues { array =>
-      var i = 0
-      val st1 = BitSet.empty(size)
-      while (i < array.length) {
-        if (st0(i)) {
-          val bs = array(i)
-          if (bs != null) st1 |= bs
-        }
-        i += 1
-      }
-      st1
-    }
-
-  /**
    * Given a bitset of current states and a character of input,
    * compute the bitset of future states (if any).
    *
@@ -127,38 +110,32 @@ case class Nfa(
 
 object Nfa {
 
-  /**
-   * Build an NFA from a given regular expression.
-   */
-  def fromRx(r: Rx): Nfa =
-    NfaBuilder.fromRx(r).buildNfa
+  object Builder {
 
-  object NfaBuilder {
+    def alloc(start: Int, end: Int): Builder =
+      Builder(start, end, Map(start -> Map.empty, end -> Map.empty))
 
-    def alloc(start: Int, end: Int): NfaBuilder =
-      NfaBuilder(start, end, Map(start -> Map.empty, end -> Map.empty))
-
-    def fromRx(rx: Rx): NfaBuilder = {
+    def fromRx(rx: Rx): Builder = {
       val index = new Index()
-      def recur(r: Rx): NfaBuilder =
+      def recur(r: Rx): Builder =
         r match {
           case Rx.Phi =>
-            NfaBuilder.alloc(index.next(), index.next())
+            Builder.alloc(index.next(), index.next())
           case Rx.Empty =>
             val n = index.next()
-            NfaBuilder.alloc(n, n)
+            Builder.alloc(n, n)
           case Rx.Letter(c) =>
             val n0 = index.next()
             val n1 = index.next()
-            NfaBuilder.alloc(n0, n1).addEdge(n0, Some(LetterSet(c)), n1)
+            Builder.alloc(n0, n1).addEdge(n0, Some(LetterSet(c)), n1)
           case Rx.Letters(cs) =>
             val n0 = index.next()
             val n1 = index.next()
-            NfaBuilder.alloc(n0, n1).addEdge(n0, Some(cs), n1)
+            Builder.alloc(n0, n1).addEdge(n0, Some(cs), n1)
           case Rx.Concat(r1, r2) =>
             val nfa1 = recur(r1)
             val nfa2 = recur(r2)
-            NfaBuilder.alloc(nfa1.start, nfa2.accept)
+            Builder.alloc(nfa1.start, nfa2.accept)
               .absorb(nfa1)
               .absorb(nfa2)
               .addEdge(nfa1.accept, None, nfa2.start)
@@ -167,7 +144,7 @@ object Nfa {
             val nfa1 = recur(r1)
             val nfa2 = recur(r2)
             val accept = index.next()
-            NfaBuilder.alloc(start, accept)
+            Builder.alloc(start, accept)
               .absorb(nfa1)
               .absorb(nfa2)
               .addEdge(start, None, nfa1.start)
@@ -194,13 +171,13 @@ object Nfa {
     }
   }
 
-  case class NfaBuilder(
+  case class Builder(
     start: Int,
     accept: Int,
     edges: Map[Int, Map[Option[LetterSet], Set[Int]]]) {
 
-    def addEdge(from: Int, c: Option[LetterSet], to: Int): NfaBuilder =
-      NfaBuilder(start, accept, edges.get(from) match {
+    def addEdge(from: Int, c: Option[LetterSet], to: Int): Builder =
+      Builder(start, accept, edges.get(from) match {
         case None =>
           edges.updated(from, Map(c -> Set(to)))
         case Some(m) =>
@@ -231,7 +208,7 @@ object Nfa {
         to <- set.iterator
       } yield (from, c, to)
 
-    def absorb(nfa: NfaBuilder): NfaBuilder =
+    def absorb(nfa: Builder): Builder =
       nfa.transitions.foldLeft(this) {
         case (nfa, (from, c, to)) => nfa.addEdge(from, c, to)
       }
@@ -261,9 +238,9 @@ object Nfa {
     /**
      *
      */
-    def buildDfa: Dfa.DfaBuilder[Set[Int]] = {
+    def toDfaBuilder: Dfa.Builder[Set[Int]] = {
       val st = closure(Set(start))
-      val bldr = new Dfa.DfaBuilder(st)
+      val bldr = new Dfa.Builder(st)
       var queue: List[Set[Int]] = List(st)
       var seen: Set[Set[Int]] = Set.empty
       while (queue.nonEmpty) {
@@ -284,13 +261,13 @@ object Nfa {
     }
 
     /**
-     * Build an Nfa from this NfaBuilder instance.
+     * Build an Nfa from this Builder instance.
      *
      * This operation is fairly expensive: we will need to compute the
      * transition closure of each input (which we represent as an
      * array of bitsets).
      */
-    def buildNfa: Nfa = {
+    def build: Nfa = {
       val nfa = this
       val size: Int = nfa.edges.size
 

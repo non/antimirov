@@ -750,13 +750,13 @@ sealed abstract class Rx { lhs =>
    *
    */
   def toNfa: Nfa =
-    Nfa.fromRx(this)
+    Nfa.Builder.fromRx(this).build
 
   /**
    *
    */
   def toDfa: Dfa =
-    Nfa.NfaBuilder.fromRx(this).buildDfa.build.minimize
+    Nfa.Builder.fromRx(this).toDfaBuilder.build.minimize
 }
 
 object Rx {
