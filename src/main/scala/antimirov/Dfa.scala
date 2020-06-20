@@ -2,21 +2,27 @@ package antimirov
 
 import scala.reflect.ClassTag
 
-// start = 0
-// size = edges.length
+/**
+ * DFA stands for deterministic finite-state automaton.
+ *
+ * Invariants:
+ *  - the start ID == 0
+ *  - accept.size == edges.length
+ */
 case class Dfa(
   accept: BitSet,
   edges: Array[LetterMap[Int]]) {
 
-  override def toString: String =
-    edges.iterator.zipWithIndex.map { case (lm, i) =>
-      val label = if (accept(i)) s"[$i]" else s"$i"
-      s"$label -> $lm"
-    }.mkString("\n")
-
-  def get(n: Int, c: Char): Option[Int] =
+  /**
+   * See if a particular node has an edge corresponding to a
+   * particular character, and if so where it leads.
+   */
+  private def get(n: Int, c: Char): Option[Int] =
     edges(n).get(c)
 
+  /**
+   * Returns whether this DFA accepts the given string or not.
+   */
   def accepts(s: String): Boolean = {
     var state = 0
     var i = 0
@@ -30,9 +36,24 @@ case class Dfa(
     accept(state)
   }
 
+  /**
+   * Returns whether this DFA rejects the given string or not.
+   */
   def rejects(s: String): Boolean =
     !accepts(s)
 
+  /**
+   * Hopcroft's DFA minimization algorithm.
+   *
+   * Produce a new DFA with the minimal number of states that accepts
+   * the same language (i.e. the same set of strings).
+   *
+   * This method does not prune unreachable states. In practice the
+   * DFAs we build only have states that are reachable and that can
+   * lead to an accepting state. In the future we may provide a method
+   * to prune states that are either unreachable from start or that
+   * cannot lead to an accepting state.
+   */
   def minimize: Dfa = {
     type Partition = Set[Int]
 
@@ -88,6 +109,23 @@ case class Dfa(
     bldr.build
   }
 
+  /**
+   * Print a string representation the DFA.
+   *
+   * The starting state (0) is printed first. Any accepting state is
+   * printed surrounded by brackets (e.g. [4]).
+   */
+  override def toString: String =
+    edges.iterator.zipWithIndex.map { case (lm, i) =>
+      val label = if (accept(i)) s"[$i]" else s"$i"
+      s"$label -> $lm"
+    }.mkString("\n")
+
+  /**
+   * Return the alphabet of this DFA, represented as a list of
+   * character sets. Each character set can be treated as a single
+   * logical character for the purposes of this DFA.
+   */
   private def alphabet: List[LetterSet] = {
     def keySets(m: LetterMap[Int]): List[LetterSet] =
       m.iterator.map { case ((c1, c2), _) => LetterSet(c1 to c2) }.toList
