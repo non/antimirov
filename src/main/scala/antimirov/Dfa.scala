@@ -102,31 +102,6 @@ case class Dfa(
 
 object Dfa {
 
-  def fromNfa(nfa: Nfa): Dfa =
-    DfaBuilder.fromNfa(nfa).build
-
-  object DfaBuilder {
-    def fromNfa(nfa: Nfa): DfaBuilder[BitSet] = {
-      val bldr = new DfaBuilder(nfa.start)
-      var queue: List[BitSet] = List(nfa.start)
-      var seen: Set[BitSet] = Set.empty
-      while (queue.nonEmpty) {
-        val st0 = queue.head
-        queue = queue.tail
-        if (!seen(st0)) {
-          seen = seen + st0
-          bldr.addNode(st0, st0 intersects nfa.accept)
-          nfa.followAll(st0).iterator.foreach { case ((c1, c2), st1) =>
-            bldr.addNode(st1, st1 intersects nfa.accept)
-            bldr.addEdge(st0, LetterSet(c1 to c2), st1)
-            queue = st1 :: queue
-          }
-        }
-      }
-      bldr
-    }
-  }
-
   class DfaBuilder[S: ClassTag](val start: S) {
 
     override def toString: String = s"DfaBuilder($start, $acceptSet, $edges)"

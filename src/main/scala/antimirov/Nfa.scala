@@ -123,9 +123,6 @@ case class Nfa(
       case None =>
         None
     }
-
-  def toDfa: Dfa =
-    Dfa.fromNfa(this)
 }
 
 object Nfa {
@@ -134,7 +131,7 @@ object Nfa {
    * Build an NFA from a given regular expression.
    */
   def fromRx(r: Rx): Nfa =
-    NfaBuilder.fromRx(r).build
+    NfaBuilder.fromRx(r).buildNfa
 
   object NfaBuilder {
 
@@ -239,6 +236,53 @@ object Nfa {
         case (nfa, (from, c, to)) => nfa.addEdge(from, c, to)
       }
 
+    private def mergeAll(it: Iterator[LetterMap[Set[Int]]]): LetterMap[Set[Int]] =
+      if (it.hasNext) {
+        val x = it.next
+        it.foldLeft(x)((acc, m) => acc.merge(m)(_ | _))
+      } else {
+        LetterMap.empty
+      }
+
+    def follow(src: Int): LetterMap[Set[Int]] =
+      edges.get(src) match {
+        case Some(m) =>
+          mergeAll(m.iterator.flatMap {
+            case (Some(cs), dsts) => Some(LetterMap(cs, dsts))
+            case (None, _) => None
+          })
+        case None =>
+          LetterMap.empty
+      }
+
+    def followAll(set: Set[Int]): LetterMap[Set[Int]] =
+      mergeAll(set.iterator.map(follow(_)))
+
+    /**
+     *
+     */
+    def buildDfa: Dfa.DfaBuilder[Set[Int]] = {
+      val st = closure(Set(start))
+      val bldr = new Dfa.DfaBuilder(st)
+      var queue: List[Set[Int]] = List(st)
+      var seen: Set[Set[Int]] = Set.empty
+      while (queue.nonEmpty) {
+        val st0 = queue.head
+        queue = queue.tail
+        if (!seen(st0)) {
+          seen = seen + st0
+          bldr.addNode(st0, st0(accept))
+          followAll(st0).iterator.foreach { case ((c1, c2), st1x) =>
+            val st1 = closure(st1x)
+            bldr.addNode(st1, st1(accept))
+            bldr.addEdge(st0, LetterSet(c1 to c2), st1)
+            queue = st1 :: queue
+          }
+        }
+      }
+      bldr
+    }
+
     /**
      * Build an Nfa from this NfaBuilder instance.
      *
@@ -246,7 +290,7 @@ object Nfa {
      * transition closure of each input (which we represent as an
      * array of bitsets).
      */
-    def build: Nfa = {
+    def buildNfa: Nfa = {
       val nfa = this
       val size: Int = nfa.edges.size
 

@@ -756,7 +756,7 @@ sealed abstract class Rx { lhs =>
    *
    */
   def toDfa: Dfa =
-    toNfa.toDfa
+    Nfa.NfaBuilder.fromRx(this).buildDfa.build.minimize
 }
 
 object Rx {
