@@ -92,10 +92,10 @@ lazy val root = project
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
-  .in(file("."))
+  .in(file("core"))
   .settings(antimirovSettings: _*)
   .settings(
-    name := "antimirov",
+    name := "antimirov-core",
     coverageEnabled := true)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
