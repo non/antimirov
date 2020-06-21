@@ -122,19 +122,23 @@ x <= U   // true
 x < U    // true
 ```
 
-An `antimirov.Rx` value can be converted to an `antimirov.Nfa`, a
-`java.util.regex.Pattern`, or a `scala.util.matching.Regex`.
+An `antimirov.Rx` value can be converted to any of:
+
+ - `antimirov.Nfa`
+ - `antimirov.Dfa`
+ - `java.util.regex.Pattern`
+ - `scala.util.matching.Regex`.
 
 Note that unlike many modern regex libraries, Antimirov's regular
 expressions do not contain non-regular features (such as
-back-references, zero-width assertions, and so on), and are solely
-focused on matching, not on searching or extraction.
+back-references), and are solely focused on matching, not on searching
+or extraction.
 
 Concretely, this means that:
 
-    1. Patterns are matched against the entire string
-    2. No subgroup extraction is possible
-    3. The only primitive operations are alternation, concatenation, and Kleene star
+ 1. Patterns are matched against the entire string
+ 2. No subgroup extraction is possible
+ 3. The only primitive operations are alternation, concatenation, and Kleene star
 
 In exchange for giving up these modern affordances, Antimirov can do
 things that most regular expression libraries can't, such as
@@ -210,16 +214,28 @@ never perform very well.
 
 Here's a list of other known problems:
 
-    1. Antimirov doesn't preserve user-specified expression syntax
-    2. Antimirov cannot (yet) check constant expressions at compile-time
-    3. Synthetic operators such as + and ? are not reified in the AST
-    4. There could be more work on simplification/canonicalization
+  1. Antimirov doesn't preserve user-specified expression syntax
+  2. Antimirov cannot (yet) check constant expressions at compile-time
+  3. Synthetic operators (e.g. `+` and `?`) are not reified in the AST
+  4. There could be more work on simplification/canonicalization
 
 ### Future Work
 
 Since the general problem is exponential, there is likely a lot of
 future work around chipping away at the margins: heuristics that cover
 most interesting regular expressions users are interested in.
+
+We could add support for other kinds of generators and test frameworks
+(e.g. Hedgehog, Scalaprops, etc.)
+
+We could add predefined character classes (e.g. `\w` from PCRE or
+`[:digit:]` from POSIX). It's fairly straightforward to add support
+for reading these, but a bit tricker figuring out when to emit them.
+
+There is signficant room for improvement of the NFA/DFA
+implementations (they have not been the primary focus of the project
+so far). Relatedly, we could add support for searching instead of just
+matching.
 
 There is major room for improvement for the HTML/JS tool (the current
 version was optimized for what was easy for the author to produce).
@@ -228,16 +244,8 @@ Additionally, we could provide an interactive/command-line tool to
 help work with regular expressions (potentially using Graal or Scala
 Native to produce a native executable).
 
-We could add support for other kinds of generators and test frameworks
-(e.g. Hedgehog, Scalaprops, etc.)
-
-There is signficant room for improvement of the NFA/DFA
-implementations (they have not been the primary focus of the project
-so far). Relatedly, we could add support for searching instead of just
-matching.
-
-It would be interesting to see how many of Antimirov's features we can
-preserve if we allow extracting subgroup matches.
+It would be interesting to see how many of Antimirov's features we
+would have to give up to add support for extracting subgroup matches.
 
 ### Copyright and License
 
