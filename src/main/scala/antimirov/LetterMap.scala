@@ -62,13 +62,21 @@ class LetterMap[A](
     while (it.hasNext) {
       val diff = it.next
       val (c1, c2) = diff.value
-      kbuf.append(c1)
-      kbuf.append(c2)
-      vbuf.append(diff match {
+      val v = diff match {
         case Diff.Left((c, _)) => lhs(c)
         case Diff.Both((c, _)) => f(lhs(c), rhs(c))
         case Diff.Right((c, _)) => rhs(c)
-      })
+      }
+      // if our new region is adjacent to our previous region and
+      // we're writing the same value, we should extend the previous
+      // region rather than writing a new one here.
+      if (kbuf.nonEmpty && c1 == (kbuf.last + 1) && vbuf.last == v) {
+        kbuf(kbuf.size - 1) = c2
+      } else {
+        kbuf.append(c1)
+        kbuf.append(c2)
+        vbuf.append(v)
+      }
     }
     new LetterMap(kbuf.toArray, vbuf.toArray)
   }
