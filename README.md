@@ -188,7 +188,9 @@ ScalaCheck. (For other usages, prefer its embedded `Rx` value).
 ### Web/JS tool
 
 Antimirov has an interactive JS/HTML tool for working with regular
-expressions. You can try it out at
+expressions.
+
+You can try it out at
 [http://phylactery.org/antimirov/](http://phylactery.org/antimirov/).
 
 To visit this page locally, simply run `sbt web/fullOptJS` and then
