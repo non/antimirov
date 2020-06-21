@@ -2,6 +2,7 @@ import ReleaseTransformations._
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 def ScalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.3"
+def ScalaProps = "com.github.scalaprops" %% "scalaprops" % "0.8.0"
 def Claimant = "org.typelevel" %% "claimant" % "0.1.3"
 
 lazy val antimirovSettings = Seq(
@@ -123,6 +124,24 @@ lazy val check = crossProject(JSPlatform, JVMPlatform)
 
 lazy val checkJVM = check.jvm
 lazy val checkJS = check.js
+
+lazy val props = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("props"))
+  .dependsOn(core)
+  .settings(antimirovSettings: _*)
+  .settings(
+    name := "antimirov-props",
+    coverageEnabled := true,
+    libraryDependencies += ScalaProps)
+  .jsSettings(
+    scalaJSStage in Global := FastOptStage,
+    parallelExecution := false,
+    coverageEnabled := false,
+    jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv())
+
+lazy val propsJVM = props.jvm
+lazy val propsJS = props.js
 
 lazy val tests = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
