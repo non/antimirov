@@ -138,11 +138,24 @@ Concretely, this means that:
 
  1. Patterns are matched against the entire string
  2. No subgroup extraction is possible
- 3. The only primitive operations are alternation, concatenation, and Kleene star
+ 3. Zero-width assertions are unsupported
 
-In exchange for giving up these modern affordances, Antimirov can do
-things that most regular expression libraries can't, such as
-intersection, exclusive-or, negation, semantic equality checks, set
+Technically zero-width assertions are still regular, but they are not
+easily composable. For example, for `(?=x)` as a zero-width look-ahead
+assertion on `x`, and `(?<=y)` as a zero-width look-behind assertion
+on `y`, the following is true:
+
+ - `[a-z]*(?=[^b])` is equivalent to `[a-z]*[^b]`
+ - `(?<=[^c])[a-z]*` is equivalent to `[^c][a-z]*`
+ - `[a-z]*(?=[^b])(?<=[^c])[a-z]*)` is *NOT* equivalent to `[a-z]*[^b][^c][a-z]*`
+ - instead it's equivalent to `[a-z]*[^bc][a-z]*`
+
+These assertions don't play well with the algebraic structure of `Rx`
+which is why they are left out (for now at least).
+
+In exchange for giving up these sorts of affordances, Antimirov can do
+things that most regular expression libraries can't do, such as
+intersection, exclusive-or, negation, semantic equality checks, subset
 comparisons (e.g. inclusion), and more.
 
 ### ScalaCheck support
