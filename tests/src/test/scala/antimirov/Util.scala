@@ -1,7 +1,6 @@
 package antimirov
 
 import org.scalacheck.{Arbitrary, Gen, Prop, Properties}
-import org.scalacheck.rng.Seed
 
 import Arbitrary.arbitrary
 import Prop.{forAllNoShrink => forAll}
@@ -68,53 +67,11 @@ object Util {
     result.getOrElse(!failOnAbort)
   }
 
-  def stringsFromRx(r: Rx): Option[Gen[String]] = {
-    def recur(r: Rx, s0: Seed, sb0: StringBuilder): (Seed, StringBuilder) =
-      r match {
-        case Rx.Var(_) => sys.error("!")
-        case Rx.Phi => sys.error("!")
-        case Rx.Empty => (s0, sb0)
-        case Rx.Letter(c) => (s0, sb0 += c)
-        case Rx.Letters(cs) =>
-          val (n, s1) = s0.long
-          val i = ((n & Long.MaxValue) % cs.size).toInt
-          val c = cs.iterator.drop(i).next
-          (s1, sb0 += c)
-        case Rx.Concat(x, y) =>
-          val (s1, sb1) = recur(x, s0, sb0)
-          recur(y, s1, sb1)
-        case Rx.Choice(x, y) =>
-          val (n, s1) = s0.long
-          if (n < 0L) recur(x, s1, sb0) else recur(y, s1, sb0)
-        case r @ Rx.Repeat(x, m, n) =>
-          if (m > 0) {
-            recur(Rx.Concat(x, Rx.Repeat(x, m - 1, n - 1)), s0, sb0)
-          } else if (n > 0) {
-            recur(Rx.Choice(Rx.Empty, Rx.Concat(x, Rx.Repeat(x, 0, n - 1))), s0, sb0)
-          } else {
-            (s0, sb0)
-          }
-        case s @ Rx.Star(r) =>
-          val (n, s1) = s0.long
-          if (n < 0L) {
-            (s1, sb0)
-          } else {
-            val (s2, sb1) = recur(r, s1, sb0)
-            recur(s, s2, sb1)
-          }
-      }
+  def stringsFromRx(r: Rx): Option[Gen[String]] =
     r match {
-      case Rx.Var(_) =>
-        sys.error("!")
-      case _ if r.isPhi =>
-        None
-      case _ =>
-        Some(Gen.choose(Long.MinValue, Long.MaxValue).map { n =>
-          val (_, sb) = recur(r, Seed(n), new StringBuilder)
-          sb.toString
-        })
+      case Rx.Phi => None
+      case r => Some(antimirov.gen.rx(r))
     }
-  }
 
   //val (cmin, cmax) = ('a', 'e')
   val (cmin, cmax) = ('a', 'z')

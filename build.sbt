@@ -124,6 +124,25 @@ lazy val check = crossProject(JSPlatform, JVMPlatform)
 lazy val checkJVM = check.jvm
 lazy val checkJS = check.js
 
+lazy val tests = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("tests"))
+  .dependsOn(core, check)
+  .settings(antimirovSettings: _*)
+  .settings(noPublish: _*)
+  .settings(
+    name := "antimirov-tests",
+    coverageEnabled := true,
+    libraryDependencies += ScalaCheck)
+  .jsSettings(
+    scalaJSStage in Global := FastOptStage,
+    parallelExecution := false,
+    coverageEnabled := false,
+    jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv())
+
+lazy val testsJVM = tests.jvm
+lazy val testsJS = tests.js
+
 lazy val web = project.in(file("web"))
   .dependsOn(coreJS)
   .settings(name := "antimirov-web")
