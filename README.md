@@ -49,29 +49,28 @@ efficient matching (either a `Dfa` or `Nfa`).
 
 ### Getting Antimirov
 
-Antimirov supports Scala 2.13 and 2.12. It is not yet published.
+Antimirov supports Scala 2.13 and 2.12. It is avilable from Sonatype.
 
-You can check out Antimirov locally using [SBT](https://www.scala-sbt.org/1.x/docs/).
-After cloning the repository, run `sbt` and then at the prompt run `console`:
+To include Antimirov in your projects, you can use the following
+`build.sbt` snippet:
 
+```scala
+libraryDependencies +=
+  "org.spire-math" %% "antimirov-core" % "0.1.0"
+
+libraryDependencies += // optional scalacheck support
+  "org.spire-math" %% "antimirov-check" % "0.1.0"
 ```
-$ git clone https://github.com/non/antimirov.git
-$ cd antimirov
-$ sbt
-[info] Loading settings for project global-plugins from javap.sbt ...
-[info] Loading global plugins from /Users/erik/.sbt/1.0/plugins
-[info] Loading settings for project antimirov-build from plugins.sbt ...
-[info] Loading project definition from /Users/erik/w/antimirov/project
-[info] Loading settings for project root from build.sbt ...
-[info] Set current project to root (in build file:/Users/erik/w/antimirov/)
-[info] sbt server started at local:///Users/erik/.sbt/1.0/server/24f52b77357d3981e1c8/sock
-sbt:root> console
-[info] Starting scala interpreter...
-Welcome to Scala 2.13.2 (OpenJDK 64-Bit Server VM, Java 1.8.0_212).
-Type in expressions for evaluation. Or try :help.
 
-scala> antimirov.Rx.parse("([a-c][d-f])*").deriv('a')
-val res0: antimirov.Rx = [d-f]([a-c][d-f])*
+Antimirov also supports Scala.js. To use Antimirov in your Scala.js
+projects, include the following `build.sbt` snippet:
+
+```scala
+libraryDependencies +=
+  "org.spire-math" %%% "antimirov" % "0.1.0"
+
+libraryDependencies += // optional scalacheck support
+  "org.spire-math" %%% "antimirov-check" % "0.1.0"
 ```
 
 ### Details
