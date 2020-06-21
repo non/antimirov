@@ -20,8 +20,8 @@ expression combinators:
  - Unmatchable regular expressions (`Rx.Phi`)
  - Matching the empty string (`Rx.Empty`)
  - Matching single characters (`Rx.Letter(c)`)
- - Matching ranges of characters (`Rx.Letters(cs)`)
- - Alternation (`Rx.Choice(x, y)`, i.e. `x + y`)
+ - Matching sets of characters (`Rx.Letters(cs)`)
+ - Alternation (`Rx.Choice(x, y)`, i.e. `x + y` or `x | y`)
  - Concatenation (`Rx.Concat(x, y)`, i.e. `x * y`)
  - Kleene Star (`Rx.Star(x)`, i.e. `x.star`)
  - Repetition (`Rx.Repeat(r, m, n)`, i.e. `r.repeat(m, n)`)
@@ -30,6 +30,7 @@ In addition to the previous combinators which are reified as algebraic
 data types, `Rx` supports additional operations:
 
  - Exponentiation (`x.pow(k)`)
+ - Optionality (`x.optional`)
  - Intersection (`x & y`)
  - Exclusive-or (XOR, i.e. `x ^ y`)
  - Difference (`x - y`)
@@ -43,8 +44,8 @@ What this means is that each `Rx` value has a corresponding set of
 strings it accepts, and that these operations produce new `Rx` values
 whose sets are consistent with the corresponding set operations.
 
-Finaly, `Rx` values can be compiled down to an `Nfa` value for more
-efficient matching.
+Finaly, `Rx` values can be compiled down to an automaton for more
+efficient matching (either a `Dfa` or `Nfa`).
 
 ### Getting Antimirov
 
@@ -140,6 +141,59 @@ things that most regular expression libraries can't, such as
 intersection, exclusive-or, negation, semantic equality checks, set
 comparisons (e.g. inclusion), and more.
 
+### ScalaCheck support
+
+The `antimirov-check` package support ScalaCheck, adding the ability
+to generate strings according to a regular expression. There are two
+ways to use it:
+
+```scala
+package demo
+
+import antimirov.Rx
+import org.scalacheck.{Prop, Properties}
+
+object Demo extends Properties("Demo") {
+
+  property("Arbitrary-based usage") = {
+    val r1 = antimirov.check.Regex("-?(0|[1-9][0-9]*)")
+    Prop.forAll { (w: r1.Word) =>
+      val s: String = w.value
+      // s is guaranteed to be accepted by r1
+      ???
+    }
+  }
+
+  property("Gen-based usage") = {
+    val r2 = Rx.parse("-?(0|[1-9][0-9]*)")
+    val mygen: Gen[String] = antimirov.gen.rx(r2)
+    Prop.forAll(mygen) { s: String =>
+      // s is guaranteed to be accepted by r2
+      ???
+    }
+  }
+}
+```
+
+One thing to note here is that `antimirov.Rx` has no direct dependency
+on ScalaCheck, which is why we introduce `antimirov.check.Regex` to
+gain `Arbitrary` support.
+
+`Regex` is wrapper type around `Rx` that adds the path-dependent type
+`Word` as well as implementations of `Gen` and `Arbitrary` used by
+ScalaCheck. `Regex` does not support the full suit of Antimirov
+operations (such as `&`) and is really just meant for use with
+ScalaCheck. (For other usages, prefer its embedded `Rx` value).
+
+### Web/JS tool
+
+Antimirov has an interactive JS/HTML tool for working with regular
+expressions. You can try it out at
+[http://phylactery.org/antimirov/](http://phylactery.org/antimirov/).
+
+To visit this page locally, simply run `sbt web/fullOptJS` and then
+visit `web/index.html` in your web browser.
+
 ### Known Issues
 
 The biggest issue with this library is that the problems are
@@ -157,14 +211,28 @@ Here's a list of other known problems:
     1. Antimirov doesn't preserve user-specified expression syntax
     2. Antimirov cannot (yet) check constant expressions at compile-time
     3. Synthetic operators such as + and ? are not reified in the AST
-    4. There's very little support for minimization or simplification
-    5. DFA support is not implemented yet
+    4. There could be more work on simplification/canonicalization
 
 ### Future Work
 
 Since the general problem is exponential, there is likely a lot of
 future work around chipping away at the margins: heuristics that cover
 most interesting regular expressions users are interested in.
+
+There is major room for improvement for the HTML/JS tool (the current
+version was optimized for what was easy for the author to produce).
+
+Additionally, we could provide an interactive/command-line tool to
+help work with regular expressions (potentially using Graal or Scala
+Native to produce a native executable).
+
+We could add support for other kinds of generators and test frameworks
+(e.g. Hedgehog, Scalaprops, etc.)
+
+There is signficant room for improvement of the NFA/DFA
+implementations (they have not been the primary focus of the project
+so far). Relatedly, we could add support for searching instead of just
+matching.
 
 It would be interesting to see how many of Antimirov's features we can
 preserve if we allow extracting subgroup matches.
