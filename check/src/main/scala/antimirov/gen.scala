@@ -16,8 +16,10 @@ object gen {
    */
   def rx(r: Rx): Gen[String] =
     r match {
+      // $COVERAGE-OFF$
       case v @ Rx.Var(_) =>
         sys.error(s"illegal regex detected ($v)")
+      // $COVERAGE-ON$
       case Rx.Phi =>
         sys.error(s"impossible to generate strings from regex ϕ")
       case Rx.Empty =>
@@ -79,8 +81,6 @@ object gen {
     rs match {
       case Nil =>
         Nil
-      case Rx.Empty :: rest =>
-        parseConcats(rest)
       case Rx.Letter(c) :: rest =>
         parseConcats(rest) match {
           case Left(s) :: out => Left(c.toString + s) :: out
