@@ -152,10 +152,15 @@ object Nfa {
               .addEdge(nfa1.accept, None, accept)
               .addEdge(nfa2.accept, None, accept)
           case Rx.Star(r) =>
+            val start = index.next()
             val nfa = recur(r)
-            nfa
-              .addEdge(nfa.start, None, nfa.accept)
-              .addEdge(nfa.accept, None, nfa.start)
+            val accept = index.next()
+            Builder.alloc(start, accept)
+              .absorb(nfa)
+              .addEdge(start, None, nfa.start)
+              .addEdge(nfa.accept, None, accept)
+              .addEdge(start, None, accept)
+              .addEdge(accept, None, start)
           case Rx.Repeat(r, x, y) if x > 0 =>
             recur(Rx.Concat(r, Rx.Repeat(r, x - 1, y - 1)))
           case Rx.Repeat(r, _, y) if y > 0 =>
@@ -175,6 +180,18 @@ object Nfa {
     start: Int,
     accept: Int,
     edges: Map[Int, Map[Option[LetterSet], Set[Int]]]) {
+
+    override def toString: String = {
+      edges.toList.sortBy(_._1).map { case (k, m) =>
+        val s = (k == start, k == accept) match {
+            case (true, true) => s"([$k])"
+            case (true, false) => s"($k)"
+            case (false, true) => s"[$k]"
+            case (false, false) => s"$k"
+          }
+        s"$s -> $m"
+      }.mkString("\n")
+    }
 
     def addEdge(from: Int, c: Option[LetterSet], to: Int): Builder =
       Builder(start, accept, edges.get(from) match {

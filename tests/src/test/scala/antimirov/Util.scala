@@ -73,9 +73,19 @@ object Util {
       case r => Some(antimirov.gen.rx(r))
     }
 
+  // using a very restricted set of characters (a-e) makes things like
+  // intersection very intensive, since you are likely to have many
+  // patterns using the same characters. using a very large set
+  // (min-max) can be challenging for letter set/letter map and large
+  // unions, but is less intensive for the rx tests themselves.
+
+  // TODO: we get random coder exceptions when using the widest range
+  // on some generated characters. eventually let's figure that out
+  // and leave (min-max) as the default.
+
   //val (cmin, cmax) = ('a', 'e')
-  val (cmin, cmax) = ('a', 'z')
-  //val (cmin, cmax) = (' ', '~')
+  //val (cmin, cmax) = ('a', 'z')
+  val (cmin, cmax) = (' ', '~')
   //val (cmin, cmax) = (Char.MinValue, Char.MaxValue)
 
   val alphabet: LetterSet =

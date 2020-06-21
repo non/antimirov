@@ -10,7 +10,7 @@ object DfaTest extends Properties("DfaTest") with TimingProperties { self =>
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
       .withMinSuccessfulTests(100)
-      //.withPropFilter(Some("dfa regression #2"))
+      //.withPropFilter(Some("dfa regression #3"))
 
   override def scale: Long = 20L
   override def enableTiming = true
@@ -21,7 +21,7 @@ object DfaTest extends Properties("DfaTest") with TimingProperties { self =>
     set.iterator.map { s =>
       val lhs = rx.accepts(s)
       val rhs = dfa.accepts(s)
-      Claim(lhs == rhs) :| s"failed to accept '$s'"
+      Claim(lhs == rhs) :| s"failed to agree on '$s'"
     }.foldLeft(Prop(true))(_ && _)
   }
 
@@ -51,4 +51,14 @@ object DfaTest extends Properties("DfaTest") with TimingProperties { self =>
         Prop(dfa1.accepts(s) == dfa2.accepts(s)) :| s"disagree on $s"
       }.foldLeft(Prop(true))(_ && _)
     }
+
+  property("dfa regression #3") = {
+    val rx = Rx.parse("(\\u8fd6.*)*")
+    val dfa = rx.toDfa
+    List("hi").iterator.map { s =>
+      val lhs = rx.accepts(s)
+      val rhs = dfa.accepts(s)
+      Claim(lhs == rhs) :| s"failed to agree on '$s'"
+    }.foldLeft(Prop(true))(_ && _)
+  }
 }

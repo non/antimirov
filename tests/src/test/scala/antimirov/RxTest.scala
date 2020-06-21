@@ -3,6 +3,7 @@ package antimirov
 import java.util.regex.Pattern
 import org.scalacheck.{Gen, Prop, Properties, Test}
 import org.typelevel.claimant.Claim
+import scala.util.{Failure, Success, Try}
 
 import Util._
 
@@ -220,16 +221,29 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
       Prop(lhs == rhs) :| s"disagreement for '$s' :: $r -> $lhs != $rhs"
     }.foldLeft(Prop(true))(_ && _)
 
+  // we use Try in the next two tests to deal with invalid strings
+  // that we randomly generate. antimirov doesn't care which strings
+  // are (or aren't) valid UTF-16 but Java does, so we have a chance
+  // to produce invalid strings in our generators.
+
   timedProp("matches java", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
-    val (px, py) = (x.toJava, y.toJava)
-    val lst = lstx | lsty
-    comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
+    Try((x.toJava, y.toJava)) match {
+      case Success((px, py)) =>
+        val lst = lstx | lsty
+        comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
+      case Failure(_) =>
+        Prop(true)
+    }
   }
 
   timedProp("matches scala", genRxAndStr, genRxAndStr) { case ((x, lstx), (y, lsty)) =>
-    val (px, py) = (x.toScala.pattern, y.toScala.pattern)
-    val lst = lstx | lsty
-    comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
+    Try((x.toScala.pattern, y.toScala.pattern)) match {
+      case Success((px, py)) =>
+         val lst = lstx | lsty
+        comparePatterns(x, px, lst) && comparePatterns(y, py, lst)
+      case Failure(_) =>
+        Prop(true)
+    }
   }
 
   timedProp("cardinality matches star-depth", genRx) { r =>
