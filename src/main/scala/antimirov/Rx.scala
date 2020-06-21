@@ -75,13 +75,29 @@ sealed abstract class Rx { lhs =>
     }
 
   /**
-   * xyz
+   * Kleene plus operator.
+   *
+   * The expression `x.plus` means that `x` will be applied
+   * one-or-more times. In regular expression syntax this would be
+   * written as 'x+'.
+   *
+   * Kleene plus is implemented in terms of Kleene star:
+   *
+   *     x.plus = x * x.star
+   *
+   * Kleene plus also satisfies the self-referential relation:
+   *
+   *     x.plus = x * (Empty + x.plus)
    */
   def plus: Rx =
     this * this.star
 
   /**
-   * zyx
+   * Optionality operator.
+   *
+   * The expression `x.optional` means that `x` will be applied
+   * zero-or-one times. In regular expression syntax this would be
+   * written as 'x?'.
    */
   def optional: Rx =
     this + Empty
@@ -91,20 +107,15 @@ sealed abstract class Rx { lhs =>
    *
    * `x.pow(k)` is equivalent to `x * x *... * x` k times. This can be
    * written in regular expression syntax as `x{k}`.
+   *
+   * `x.pow(k)` is equivalent to `x.repeat(k, k)` in the same way that
+   * 'x{k}' is equivalent to 'x{k,k}' in regular expression syntax.
    */
   def pow(k: Int): Rx =
-    repeat(k)
-
-  /**
-   * Single-value repetition operator.
-   *
-   * This is an alias for pow.
-   */
-  def repeat(n: Int): Rx =
-    if (n <= 0) Rx.empty
+    if (k <= 0) Rx.empty
     else this match {
       case Phi | Empty => this
-      case _ => Repeat(this, n, n)
+      case _ => Repeat(this, k, k)
     }
 
   /**
