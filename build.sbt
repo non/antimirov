@@ -87,8 +87,8 @@ lazy val root = project
   .settings(name := "root")
   .settings(antimirovSettings: _*)
   .settings(noPublish: _*)
-  .aggregate(coreJVM, coreJS)
-  .dependsOn(coreJVM, coreJS)
+  .aggregate(coreJVM, coreJS, checkJVM, checkJS, testsJVM, testsJS)
+  .dependsOn(coreJVM, coreJS, checkJVM, checkJS, testsJVM, testsJS)
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
