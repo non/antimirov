@@ -308,7 +308,7 @@ sealed abstract class Rx { lhs =>
    * regular expression.
    *
    * ϕ (or regular expressions equivalent to ϕ) will return None. All
-   * other expressions will return (x, y), where 0 <= x <= y < ∞.
+   * other expressions will return Some((x, y)), where 0 <= x <= y < ∞.
    */
   lazy val matchSizes: Option[(Size, Size)] =
     this match {
