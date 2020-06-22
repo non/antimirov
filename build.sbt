@@ -130,7 +130,9 @@ lazy val props = crossProject(JSPlatform, JVMPlatform)
   .settings(antimirovSettings: _*)
   .settings(
     name := "antimirov-props",
-    libraryDependencies += ScalaProps)
+    libraryDependencies += ScalaProps,
+    testFrameworks += new TestFramework("scalaprops.ScalapropsFramework"),
+    parallelExecution in Test := false)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
     parallelExecution := false,

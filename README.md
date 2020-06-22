@@ -202,6 +202,40 @@ ScalaCheck. `Regex` does not support the full suit of Antimirov
 operations (such as `&`) and is really just meant for use with
 ScalaCheck. (For other usages, prefer its embedded `Rx` value).
 
+### ScalaProps support
+
+Antimirov also supports ScalaProps via `antimirov-props`. This package
+is very similar to `antimirov-check`:
+
+```scala
+package demo
+
+import antimirov.Rx
+import antimirov.check.Regex
+import scalaprops.{Gen, Property, Scalaprops}
+
+object Demo extends Scalaprops {
+
+  val implicitStyle = {
+    val r1 = Regex("-?(0|[1-9][0-9]*)")
+    Property.forAll { (w: r1.Word) =>
+      val s: String = w.value
+      // s is guaranteed to be accepted by r1
+      ???
+    }
+  }
+
+  val explicitStyle = {
+    val r2 = Rx.parse("-?(0|[1-9][0-9]*)")
+    val mygen: Gen[String] = Regex.gen(r2)
+    Property.forAllG(mygen) { s =>
+      // s is guaranteed to be accepted by r2
+      ???
+    }
+  }
+}
+```
+
 ### Web/JS tool
 
 Antimirov has an interactive JS/HTML tool for working with regular
