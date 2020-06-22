@@ -1,5 +1,6 @@
 package antimirov
 
+import antimirov.check.Regex
 import org.scalacheck.{Arbitrary, Gen, Prop, Properties}
 
 import Arbitrary.arbitrary
@@ -70,7 +71,7 @@ object Util {
   def stringsFromRx(r: Rx): Option[Gen[String]] =
     r match {
       case Rx.Phi => None
-      case r => Some(antimirov.gen.rx(r))
+      case r => Some(Regex.gen(r))
     }
 
   // using a very restricted set of characters (a-e) makes things like

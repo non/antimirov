@@ -1097,4 +1097,20 @@ object Rx {
         else Double.NaN
       case _ => if (lhs.isEmpty) -1.0 else 1.0
     }
+
+  /**
+   * Pull literal strings out of a list of concatenations.
+   */
+  private[antimirov] def parseConcats(rs: List[Rx]): List[Either[String, Rx]] =
+    rs match {
+      case Nil =>
+        Nil
+      case Rx.Letter(c) :: rest =>
+        parseConcats(rest) match {
+          case Left(s) :: out => Left(c.toString + s) :: out
+          case otherwise => Left(c.toString) :: otherwise
+        }
+      case r :: rest =>
+        Right(r) :: parseConcats(rest)    }
+
 }

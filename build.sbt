@@ -96,8 +96,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .in(file("core"))
   .settings(antimirovSettings: _*)
   .settings(
-    name := "antimirov-core",
-    coverageEnabled := true)
+    name := "antimirov-core")
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
     parallelExecution := false,
@@ -114,7 +113,6 @@ lazy val check = crossProject(JSPlatform, JVMPlatform)
   .settings(antimirovSettings: _*)
   .settings(
     name := "antimirov-check",
-    coverageEnabled := true,
     libraryDependencies += ScalaCheck)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
@@ -132,7 +130,6 @@ lazy val props = crossProject(JSPlatform, JVMPlatform)
   .settings(antimirovSettings: _*)
   .settings(
     name := "antimirov-props",
-    coverageEnabled := true,
     libraryDependencies += ScalaProps)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
@@ -151,7 +148,6 @@ lazy val tests = crossProject(JSPlatform, JVMPlatform)
   .settings(noPublish: _*)
   .settings(
     name := "antimirov-tests",
-    coverageEnabled := true,
     libraryDependencies += ScalaCheck)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,

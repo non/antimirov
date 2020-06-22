@@ -23,7 +23,7 @@ object RegexTest extends Properties("RegexTest") {
   val r1 = Regex("(a|b)c{2,4}d*e")
 
   property("gen.rx(Phi) is an error") =
-    Claim(Try(antimirov.gen.rx(Rx.Phi)).isFailure)
+    Claim(Try(Regex.gen(Rx.Phi)).isFailure)
 
   property("Arbitrary[r1.Word]") =
     forAll { (w: r1.Word) =>

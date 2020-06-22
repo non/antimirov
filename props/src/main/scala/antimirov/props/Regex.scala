@@ -71,7 +71,7 @@ object Regex {
       case Rx.Letters(cs) =>
         Gen.choose(0, cs.size - 1).map(cs.get(_).toString)
       case c @ Rx.Concat(_, _) =>
-        val gs = parseConcats(c.concats).map {
+        val gs = Rx.parseConcats(c.concats).map {
           case Left(s) => Gen.value(s)
           case Right(r) => gen(r)
         }
@@ -122,18 +122,4 @@ object Regex {
       Math.floor(Math.log(u) / lognp).toInt
     }
   }
-
-  // slight optimization: combine literal characters into literal
-  // strings, which can be implemented with a single Gen.const.
-  private def parseConcats(rs: List[Rx]): List[Either[String, Rx]] =
-    rs match {
-      case Nil =>
-        Nil
-      case Rx.Letter(c) :: rest =>
-        parseConcats(rest) match {
-          case Left(s) :: out => Left(c.toString + s) :: out
-          case otherwise => Left(c.toString) :: otherwise
-        }
-      case r :: rest =>
-        Right(r) :: parseConcats(rest)    }
 }
