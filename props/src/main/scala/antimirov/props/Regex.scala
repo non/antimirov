@@ -1,4 +1,4 @@
-package antimirov.check
+package antimirov.props
 
 import antimirov.Rx
 import java.lang.Math

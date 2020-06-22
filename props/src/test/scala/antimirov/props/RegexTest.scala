@@ -1,7 +1,7 @@
 package demo
 
 import antimirov.Rx
-import antimirov.check.Regex
+import antimirov.props.Regex
 import scalaprops.{Gen, Property, Scalaprops}
 
 object Demo extends Scalaprops {
