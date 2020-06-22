@@ -9,7 +9,7 @@ object DfaTest extends Properties("DfaTest") with TimingProperties { self =>
 
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
-      .withMinSuccessfulTests(100)
+      .withMinSuccessfulTests(500)
       //.withPropFilter(Some("dfa regression #3"))
 
   override def scale: Long = 20L

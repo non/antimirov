@@ -9,7 +9,7 @@ object NfaTest extends Properties("NfaTest") with TimingProperties { self =>
 
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
-      .withMinSuccessfulTests(100)
+      .withMinSuccessfulTests(500)
       //.withPropFilter(Some("regression"))
 
   override def scale: Long = 20L
@@ -23,6 +23,10 @@ object NfaTest extends Properties("NfaTest") with TimingProperties { self =>
       val rhs = nfa.accepts(s)
       Claim(lhs == rhs) :| s"failed to accept '$s'"
     }.foldLeft(Prop(true))(_ && _)
+  }
+
+  timedProp("builer toString", genRx) { rx =>
+    Claim(Nfa.Builder.fromRx(rx).toString != "")
   }
 
   timedProp("accepts = !rejects", genRxAndStrs) { case (rx, set) =>
