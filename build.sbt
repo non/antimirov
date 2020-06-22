@@ -88,8 +88,8 @@ lazy val root = project
   .settings(name := "root")
   .settings(antimirovSettings: _*)
   .settings(noPublish: _*)
-  .aggregate(coreJVM, coreJS, checkJVM, checkJS, testsJVM, testsJS)
-  .dependsOn(coreJVM, coreJS, checkJVM, checkJS, testsJVM, testsJS)
+  .aggregate(coreJVM, coreJS, checkJVM, checkJS, propsJVM, propsJS, testsJVM, testsJS)
+  .dependsOn(coreJVM, coreJS, checkJVM, checkJS, propsJVM, propsJS, testsJVM, testsJS)
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
@@ -131,6 +131,9 @@ lazy val props = crossProject(JSPlatform, JVMPlatform)
   .settings(
     name := "antimirov-props",
     libraryDependencies += ScalaProps.value,
+    // keep scalaprops testing separate so we can use parallel
+    // execution for all our other tests. otherwise we'd have to run
+    // all of tests sequentially.
     testFrameworks += new TestFramework("scalaprops.ScalapropsFramework"),
     parallelExecution in Test := false)
   .jsSettings(
