@@ -167,12 +167,13 @@ ways to use it:
 package demo
 
 import antimirov.Rx
+import antimirov.check.Regex
 import org.scalacheck.{Prop, Properties}
 
 object Demo extends Properties("Demo") {
 
   property("Arbitrary-based usage") = {
-    val r1 = antimirov.check.Regex("-?(0|[1-9][0-9]*)")
+    val r1 = Regex("-?(0|[1-9][0-9]*)")
     Prop.forAll { (w: r1.Word) =>
       val s: String = w.value
       // s is guaranteed to be accepted by r1
@@ -182,7 +183,7 @@ object Demo extends Properties("Demo") {
 
   property("Gen-based usage") = {
     val r2 = Rx.parse("-?(0|[1-9][0-9]*)")
-    val mygen: Gen[String] = antimirov.gen.rx(r2)
+    val mygen: Gen[String] = Regex.gen(r2)
     Prop.forAll(mygen) { s: String =>
       // s is guaranteed to be accepted by r2
       ???
