@@ -56,10 +56,10 @@ To include Antimirov in your projects, you can use the following
 
 ```scala
 libraryDependencies +=
-  "org.spire-math" %% "antimirov-core" % "0.1.0"
+  "org.spire-math" %% "antimirov-core" % "0.2.0"
 
 libraryDependencies += // optional scalacheck support
-  "org.spire-math" %% "antimirov-check" % "0.1.0"
+  "org.spire-math" %% "antimirov-check" % "0.2.0"
 ```
 
 Antimirov also supports Scala.js. To use Antimirov in your Scala.js
@@ -67,10 +67,10 @@ projects, include the following `build.sbt` snippet:
 
 ```scala
 libraryDependencies +=
-  "org.spire-math" %%% "antimirov" % "0.1.0"
+  "org.spire-math" %%% "antimirov" % "0.2.0"
 
 libraryDependencies += // optional scalacheck support
-  "org.spire-math" %%% "antimirov-check" % "0.1.0"
+  "org.spire-math" %%% "antimirov-check" % "0.2.0"
 ```
 
 ### Details
