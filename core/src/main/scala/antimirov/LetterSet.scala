@@ -195,17 +195,40 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
   private def containsRangeIndex(c1: Char, c2: Char, start: Int): (Int, Boolean) =
     Arrays.binarySearch(array, start, array.length, c1) match {
       case n1 if n1 < 0 =>
+        // i is the insert position for n1. we need i to be odd, or
+        // else we're not inserting between a range, which means the
+        // character is not included. if i is odd then it corresponds
+        // to the index of the right boundary.
         val i = -(n1 + 1)
         if (i % 2 == 0) return (i, false)
-        // we need i == j or n2 == i + 1
+
+        // j is the insert position for n2. we need i == j.
         val n2 = Arrays.binarySearch(array, i, array.length, c2)
-        val res = if (n2 >= 0) n2 <= (i + 1) else -(n2 + 1) == i
-        (Integer.max(0, i - 1), res)
+        val j = if (n2 < 0) -(n2 + 1) else n2
+        (Integer.max(0, i - 1), i == j)
       case n1 => /* n1 >= 0 */
-        // we need n2 <= (n1 + 1) or j = (n1 + 1)
-        val n2 = Arrays.binarySearch(array, n1, array.length, c2)
-        val res = if (n2 >= 0) n2 <= (n1 + 1) else -(n2 + 1) == (n1 + 1)
-        (Integer.max(0, n1 - 1), res)
+        val res = if (n1 % 2 == 1) {
+          // if n1 is the right boundary, then we need n2 to be
+          // exactly n1 or else it is not contained in the range.
+          val n2 = Arrays.binarySearch(array, n1, array.length, c2)
+          n2 == n1
+        } else {
+          // if n1 is the left boundary, then we need n2 to be either
+          // n1, (n1 + 1), or else inserted between them.
+          val n2 = Arrays.binarySearch(array, n1, array.length, c2)
+          if (n2 < 0) {
+            // if n2 is being inserted, we require it to be inserted
+            // between the left boundary (n1) and the right boundary
+            // (n1 + 1).
+            val j = -(n2 + 1)
+            j == (n1 + 1)
+          } else {
+            // if n2 is present, it can be either the left boundary
+            // (n1) or the right boundary (n1 + 1).
+            n2 == n1 || n2 == (n1 + 1)
+          }
+        }
+        (n1, res)
     }
 
   def containsRange(c1: Char, c2: Char): Boolean =

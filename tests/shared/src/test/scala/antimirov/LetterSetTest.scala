@@ -128,22 +128,28 @@ abstract class LetterSetTesting(name: String) extends Properties(name) with Alph
       Claim((x == y) == ((x partialCompare y) == 0.0))
     }
 
-  propertyWithSeed("(x partialCompare y) ~ (x & y)", Some("syDDf3NPvHHdAyAA7meKDmlTN9gKZLbNx7vsO54nA_O=")) =
+  property("(x partialCompare y) ~ (x & y)") =
     forAll { (x: LetterSet, y: LetterSet) =>
       val c = x partialCompare y
       val xy = x & y
-
-      if (().toString == "undefined") {
-        // https://www.scala-js.org/doc/semantics.html
-        // TODO fix test if scala-js
-        Claim(true)
-      } else {
-        if      (c < 0.0)  Claim(xy == x && xy != y)
-        else if (c > 0.0)  Claim(xy != x && xy == y)
-        else if (c == 0.0) Claim(xy == x && xy == y)
-        else               Claim(xy != x && xy != y)
-      }
+      if      (c < 0.0)  Claim(xy == x && xy != y)
+      else if (c > 0.0)  Claim(xy != x && xy == y)
+      else if (c == 0.0) Claim(xy == x && xy == y)
+      else               Claim(xy != x && xy != y)
     }
+
+  property("regression") = {
+    // x = [ce-fh-ins-tv-xz]
+    // y = [Pa-eg-hkm-np-svz]
+    val x = LetterSet("cefhinstvwxz".toSet)
+    val y = LetterSet("Pabcdeghkmnpqrsvz".toSet)
+    val c = x partialCompare y
+    val xy = x & y
+    if      (c < 0.0)  Claim(xy == x && xy != y)
+    else if (c > 0.0)  Claim(xy != x && xy == y)
+    else if (c == 0.0) Claim(xy == x && xy == y)
+    else               Claim(xy != x && xy != y)
+  }
 
   property("x & 0 = 0") =
     forAll { (x: LetterSet) =>
