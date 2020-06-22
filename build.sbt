@@ -1,17 +1,17 @@
 import ReleaseTransformations._
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
-def ScalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.3"
-def ScalaProps = "com.github.scalaprops" %% "scalaprops" % "0.8.0"
-def Claimant = "org.typelevel" %% "claimant" % "0.1.3"
+def ScalaCheck = Def.setting("org.scalacheck" %%% "scalacheck" % "1.14.3")
+def ScalaProps = Def.setting("com.github.scalaprops" %%% "scalaprops" % "0.8.0")
+def Claimant = Def.setting("org.typelevel" %%% "claimant" % "0.1.3")
 
 lazy val antimirovSettings = Seq(
   organization := "org.spire-math",
   scalaVersion := "2.13.2",
   crossScalaVersions := Seq("2.13.2", "2.12.11"),
   libraryDependencies ++=
-    ScalaCheck % Test ::
-    Claimant % Test ::
+    ScalaCheck.value % Test ::
+    Claimant.value % Test ::
     Nil,
   testOptions in Test +=
     //Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "1", "-w", "8"),
@@ -113,7 +113,7 @@ lazy val check = crossProject(JSPlatform, JVMPlatform)
   .settings(antimirovSettings: _*)
   .settings(
     name := "antimirov-check",
-    libraryDependencies += ScalaCheck)
+    libraryDependencies += ScalaCheck.value)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
     parallelExecution := false,
@@ -130,7 +130,7 @@ lazy val props = crossProject(JSPlatform, JVMPlatform)
   .settings(antimirovSettings: _*)
   .settings(
     name := "antimirov-props",
-    libraryDependencies += ScalaProps,
+    libraryDependencies += ScalaProps.value,
     testFrameworks += new TestFramework("scalaprops.ScalapropsFramework"),
     parallelExecution in Test := false)
   .jsSettings(
@@ -143,14 +143,14 @@ lazy val propsJVM = props.jvm
 lazy val propsJS = props.js
 
 lazy val tests = crossProject(JSPlatform, JVMPlatform)
-  .crossType(CrossType.Pure)
+  .crossType(CrossType.Full)
   .in(file("tests"))
   .dependsOn(core, check)
   .settings(antimirovSettings: _*)
   .settings(noPublish: _*)
   .settings(
     name := "antimirov-tests",
-    libraryDependencies += ScalaCheck)
+    libraryDependencies += ScalaCheck.value)
   .jsSettings(
     scalaJSStage in Global := FastOptStage,
     parallelExecution := false,
