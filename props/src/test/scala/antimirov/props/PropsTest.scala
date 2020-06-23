@@ -4,7 +4,7 @@ import antimirov.Rx
 import antimirov.props.Regex
 import scalaprops.{Gen, Property, Scalaprops}
 
-object Demo extends Scalaprops {
+object PropsTest extends Scalaprops {
 
   val r1 = Regex("-?(0|[1-9][0-9]*)")
   val implicitStyle =
