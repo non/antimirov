@@ -81,8 +81,25 @@ class LetterMap[A](
     new LetterMap(kbuf.toArray, vbuf.toArray)
   }
 
-  def mapValues[B: ClassTag](f: A => B): LetterMap[B] =
-    new LetterMap(keys, vals.map(f))
+  def mapValues[B: ClassTag](f: A => B): LetterMap[B] = {
+    val kbuf = mutable.ArrayBuffer.empty[Char]
+    val vbuf = mutable.ArrayBuffer.empty[B]
+    var i = 0
+    var j = 0
+    while (i < keys.length && j < vals.length) {
+      val v = f(vals(j))
+      if (kbuf.nonEmpty && keys(i) == (kbuf.last + 1) && v == vbuf.last) {
+        kbuf(kbuf.size - 1) = keys(i + 1)
+      } else {
+        kbuf.append(keys(i))
+        kbuf.append(keys(i + 1))
+        vbuf.append(v)
+      }
+      i += 2
+      j += 1
+    }
+    new LetterMap(kbuf.toArray, vbuf.toArray)
+  }
 
   override def toString: String =
     show(_.toString)
