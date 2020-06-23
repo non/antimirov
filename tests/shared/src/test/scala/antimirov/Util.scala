@@ -35,18 +35,19 @@ object Util {
 
   // using a very restricted set of characters (a-e) makes things like
   // intersection very intensive, since you are likely to have many
-  // patterns using the same characters. using a very large set
-  // (min-max) can be challenging for letter set/letter map and large
-  // unions, but is less intensive for the rx tests themselves.
+  // patterns using the same characters. using a very large set can be
+  // challenging for letter set/letter map and large unions, but is
+  // less intensive for the rx tests themselves.
 
   // TODO: we get random coder exceptions when using the widest range
-  // on some generated characters. eventually let's figure that out
-  // and leave (min-max) as the default.
+  // on some generated characters. this is due to mismatched surrogate
+  // pairs, which our generators aren't smart enough to prevent.
 
   //val (cmin, cmax) = ('a', 'e')
   //val (cmin, cmax) = ('a', 'z')
-  val (cmin, cmax) = (' ', '~')
-  //val (cmin, cmax) = (Char.MinValue, Char.MaxValue)
+  //val (cmin, cmax) = (' ', '~')
+  val (cmin, cmax) = ('\u0000', '\ud7ff')
+  //val (cmin, cmax) = ('\u0000', '\uffff')
 
   val alphabet: LetterSet =
     LetterSet(cmin to cmax)
