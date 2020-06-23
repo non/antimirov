@@ -9,7 +9,7 @@ object DfaTest extends Properties("DfaTest") { self =>
 
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
-      .withMinSuccessfulTests(500)
+      .withMinSuccessfulTests(100)
       //.withPropFilter(Some("dfa regression #3"))
 
   property("dfa accepts regex strings") =

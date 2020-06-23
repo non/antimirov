@@ -9,7 +9,7 @@ object NfaTest extends Properties("NfaTest") { self =>
 
   override def overrideParameters(params: Test.Parameters): Test.Parameters =
     params
-      .withMinSuccessfulTests(500)
+      .withMinSuccessfulTests(100)
       //.withPropFilter(Some("regression"))
 
   property("nfa accepts regex strings") =
