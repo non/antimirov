@@ -32,8 +32,8 @@ class RxBenchmark {
 
   val Email = """[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,6}"""
   val EmailRx = Rx.parse(Email)
-  val EmailNfa = EvilRx.toNfa
-  val EmailDfa = EvilRx.toDfa
+  val EmailNfa = EmailRx.toNfa
+  val EmailDfa = EmailRx.toDfa
   val EmailJava = Pattern.compile(Email)
 
   @Benchmark def rxAcceptsEmail(): Boolean = EmailRx.accepts("erik@osheim.org")

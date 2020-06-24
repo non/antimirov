@@ -51,9 +51,26 @@ class LetterMap[A](
       }
     }
 
+  def items: Iterator[(Char, A)] =
+    iterator.flatMap { case ((c1, c2), a) =>
+      (c1 to c2).iterator.map(c => (c, a))
+    }
+
   def isEmpty: Boolean = keys.length == 0
 
   def nonEmpty: Boolean = keys.length != 0
+
+  lazy val size: Int =
+    iterator.map { case ((x, y), _) => y - x + 1 }.sum
+
+  def minKeyOption: Option[Char] =
+    if (isEmpty) None else Some(keys(0))
+
+  def maxKeyOption: Option[Char] =
+    if (isEmpty) None else Some(keys.last)
+
+  def toMap: Map[Char, A] =
+    items.toMap
 
   def merge(rhs: LetterMap[A])(f: (A, A) => A)(implicit ct: ClassTag[A]): LetterMap[A] = {
     val it = LetterSet.diff(lhs.keySet, rhs.keySet)
