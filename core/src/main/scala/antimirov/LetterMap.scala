@@ -119,15 +119,10 @@ class LetterMap[A](
   }
 
   override def toString: String =
-    show(_.toString)
-
-  def show(f: A => String): String =
-    (0 until keys.length by 2).map { i =>
-      val pair = (keys(i), keys(i + 1))
-      val ks = LetterSet.rangeRepr(pair)
-      val vs = f(vals(i / 2))
-      s"[$ks] -> $vs"
-    }.mkString("LetterMap(", ", ", ")")
+    iterator.map { case (pair, v) =>
+      val k = LetterSet.rangeRepr(pair)
+      s"[$k] -> $v"
+    }.mkString("{", ", ", "}")
 
   def ++(rhs: LetterMap[A])(implicit ct: ClassTag[A]): LetterMap[A] =
     merge(rhs)((_, a) => a)

@@ -2,6 +2,9 @@ package antimirov
 
 sealed abstract class Edges {
 
+  override def toString: String =
+    toLetterMap.toString
+
   def get(c: Char): Option[Int]
   def toLetterMap: LetterMap[Int]
   def iterator: Iterator[((Char, Char), Int)] = toLetterMap.iterator

@@ -86,16 +86,10 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
     Arrays.hashCode(array)
 
   override def toString: String =
-    repr
-
-  def repr: String =
     if (isFull) "." else {
       // TODO: could avoid allocation for ~this
       val (prefix, cs) = if (size <= 32768) ("[", this) else ("[^", ~this)
-      cs.ranges.map(LetterSet.rangeRepr)/* {
-        case (x, y) if x == y => escape(x)
-        case (x, y) => s"${escape(x)}-${escape(y)}"
-      }*/.mkString(prefix, "", "]")
+      cs.ranges.map(LetterSet.rangeRepr).mkString(prefix, "", "]")
     }
 
   lazy val size: Int =
