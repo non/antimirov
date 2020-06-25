@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
  */
 case class Dfa(
   accept: BitSet,
-  edges: Array[Edge]) {
+  edges: Array[Edges]) {
 
   /**
    * See if a particular node has an edge corresponding to a
@@ -129,7 +129,7 @@ case class Dfa(
   private def alphabet: List[LetterSet] = {
     // def keySets(m: LetterMap[Int]): List[LetterSet] =
     //   m.iterator.map { case ((c1, c2), _) => LetterSet(c1 to c2) }.toList
-    def keySets(e: Edge): List[LetterSet] =
+    def keySets(e: Edges): List[LetterSet] =
       e.iterator.map { case ((c1, c2), _) => LetterSet(c1 to c2) }.toList
     edges.iterator.map(keySets).toList match {
       case h :: t =>
@@ -170,9 +170,9 @@ object Dfa {
       val count = edges.size
       val accept1 = BitSet(count, acceptSet.map(vi.indexOf))
       //val edges1 = new Array[LetterMap[Int]](count)
-      val edges1 = new Array[Edge](count)
+      val edges1 = new Array[Edges](count)
       edges.foreach { case (src, letterMap) =>
-        edges1(vi.indexOf(src)) = Edge(letterMap.mapValues(vi.indexOf))
+        edges1(vi.indexOf(src)) = Edges(letterMap.mapValues(vi.indexOf))
       }
       Dfa(accept1, edges1)
     }
