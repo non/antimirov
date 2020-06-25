@@ -100,10 +100,12 @@ object WebApp {
         writeInto("alpha-card", text(a.cardRepr))
         writeInto("not-alpha", text((~a).toString))
         writeInto("str-in-alpha", text(a.accepts(str).toString))
+        writeInto("alpha-dfa", text(a.toDfa.edges.length.toString))
       case None =>
         writeInto("alpha-card", errorText(alphaError))
         writeInto("not-alpha", errorText(alphaError))
         writeInto("str-in-alpha", errorText(alphaError))
+        writeInto("alpha-dfa", errorText(alphaError))
     }
 
     betaRx match {
@@ -111,10 +113,12 @@ object WebApp {
         writeInto("beta-card", text(b.cardRepr))
         writeInto("not-beta", text((~b).toString))
         writeInto("str-in-beta", text(b.accepts(str).toString))
+        writeInto("beta-dfa", text(b.toDfa.edges.length.toString))
       case None =>
         writeInto("beta-card", errorText(betaError))
         writeInto("not-beta", errorText(betaError))
         writeInto("str-in-beta", errorText(betaError))
+        writeInto("beta-dfa", errorText(betaError))
     }
 
     (alphaRx, betaRx) match {
