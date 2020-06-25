@@ -56,10 +56,13 @@ To include Antimirov in your projects, you can use the following
 
 ```scala
 libraryDependencies +=
-  "org.spire-math" %% "antimirov-core" % "0.2.2"
+  "org.spire-math" %% "antimirov-core" % "0.2.3"
 
 libraryDependencies += // optional scalacheck support
-  "org.spire-math" %% "antimirov-check" % "0.2.2"
+  "org.spire-math" %% "antimirov-check" % "0.2.3"
+
+libraryDependencies += // optional scalaprops support
+  "org.spire-math" %% "antimirov-props" % "0.2.3"
 ```
 
 Antimirov also supports Scala.js. To use Antimirov in your Scala.js
@@ -67,10 +70,13 @@ projects, include the following `build.sbt` snippet:
 
 ```scala
 libraryDependencies +=
-  "org.spire-math" %%% "antimirov" % "0.2.2"
+  "org.spire-math" %%% "antimirov-core" % "0.2.3"
 
 libraryDependencies += // optional scalacheck support
-  "org.spire-math" %%% "antimirov-check" % "0.2.2"
+  "org.spire-math" %%% "antimirov-check" % "0.2.3"
+
+libraryDependencies += // optional scalaprops support
+  "org.spire-math" %%% "antimirov-props" % "0.2.3"
 ```
 
 ### Details
@@ -279,10 +285,9 @@ We could add predefined character classes (e.g. `\w` from PCRE or
 `[:digit:]` from POSIX). It's fairly straightforward to add support
 for reading these, but a bit tricker figuring out when to emit them.
 
-There is signficant room for improvement of the NFA/DFA
-implementations (they have not been the primary focus of the project
-so far). Relatedly, we could add support for searching instead of just
-matching.
+There is room for improvement of the automata implementations
+(particularly `antimirov.NFA`). Relatedly, we could add support for
+searching instead of just matching.
 
 There is major room for improvement for the HTML/JS tool (the current
 version was optimized for what was easy for the author to produce).
