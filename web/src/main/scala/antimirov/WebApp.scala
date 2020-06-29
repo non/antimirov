@@ -125,7 +125,7 @@ object WebApp {
         writeInto("str-in-beta", text(b.accepts(str).toString))
         val dfa = b.toDfa
         writeInto("beta-dfa", text(dfa.edges.length.toString))
-        drawGraph("beta-graph", dfa.toDot('β'))
+        drawGraph("#beta-graph", dfa.toDot('β'))
       case None =>
         writeInto("beta-card", errorText(betaError))
         writeInto("not-beta", errorText(betaError))
