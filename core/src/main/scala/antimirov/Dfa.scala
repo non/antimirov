@@ -140,16 +140,16 @@ case class Dfa(
   }
 
   def toDot: String =
-    toDot('α')
+    toDot('α', "Courier")
 
-  def toDot(symbol: Char): String = {
+  def toDot(symbol: Char, fontName: String): String = {
 
     def subscript(i: Int): String =
       if (i < 10) ('\u2080' + i).toChar.toString
       else subscript(i / 10) + subscript(i % 10)
 
     val sb = new StringBuilder
-    val font = "\"PragmataPro Mono\""
+    val font = "\"" + fontName + "\""
     sb.append("digraph g {\n")
     sb.append("  rankdir=\"LR\"\n")
     sb.append(s"  graph [fontname=$font]\n")
