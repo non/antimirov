@@ -109,7 +109,7 @@ object WebApp {
         writeInto("str-in-alpha", text(a.accepts(str).toString))
         val dfa = a.toDfa
         writeInto("alpha-dfa", text(dfa.edges.length.toString))
-        drawGraph("#alpha-graph", dfa.toDot('α', "Courier New"))
+        drawGraph("#alpha-graph", dfa.toDot('α', "monospace"))
       case None =>
         writeInto("alpha-card", errorText(alphaError))
         writeInto("not-alpha", errorText(alphaError))
@@ -125,7 +125,7 @@ object WebApp {
         writeInto("str-in-beta", text(b.accepts(str).toString))
         val dfa = b.toDfa
         writeInto("beta-dfa", text(dfa.edges.length.toString))
-        drawGraph("#beta-graph", dfa.toDot('β', "Courier New"))
+        drawGraph("#beta-graph", dfa.toDot('β', "monospace"))
       case None =>
         writeInto("beta-card", errorText(betaError))
         writeInto("not-beta", errorText(betaError))
