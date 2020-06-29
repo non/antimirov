@@ -138,6 +138,40 @@ case class Dfa(
         Nil
     }
   }
+
+  def toDot: String =
+    toDot('α')
+
+  def toDot(symbol: Char): String = {
+
+    def subscript(i: Int): String =
+      if (i < 10) ('\u2080' + i).toChar.toString
+      else subscript(i / 10) + subscript(i % 10)
+
+    val sb = new StringBuilder
+    val font = "\"PragmataPro Mono\""
+    sb.append("digraph g {\n")
+    sb.append("  rankdir=\"LR\"\n")
+    sb.append(s"  graph [fontname=$font]\n")
+    sb.append(s"  node [fontname=$font]\n")
+    sb.append(s"  edge [fontname=$font]\n")
+    sb.append("  {\n")
+    sb.append("    start [label=\"\" shape=none]\n")
+    (0 until edges.length).foreach { i =>
+      val shape = if (accept(i)) "doublecircle" else "circle"
+      sb.append(s"    n${i} [label=${symbol}${subscript(i)} shape=$shape]\n")
+    }
+    sb.append("  }\n")
+    sb.append("  start -> n0\n")
+    edges.iterator.zipWithIndex.foreach { case (e, src) =>
+      e.toLetterMap.valueMap.iterator.foreach { case (dst, ls) =>
+        val k = ("\"" + ls.toString + "\"").replace("\\", "\\\\")
+        sb.append(s"  n${src} -> n${dst} [label=$k]\n")
+      }
+    }
+    sb.append("}\n")
+    sb.toString
+  }
 }
 
 object Dfa {

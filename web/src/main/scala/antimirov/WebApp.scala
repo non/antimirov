@@ -6,7 +6,14 @@ import org.scalajs.dom.{document, html}
 import scala.scalajs.js.annotation.JSExportTopLevel
 import scala.util.{Failure, Success, Try}
 
+import scala.scalajs.js
+import scala.scalajs.js.annotation.JSGlobal
+
 object WebApp {
+
+  @js.native
+  @JSGlobal("drawGraph")
+  def drawGraph(identifier: String, dot: String): String = js.native
 
   def appendPar(targetNode: dom.Node, text: String): Unit = {
     val parNode = document.createElement("p")
@@ -100,7 +107,9 @@ object WebApp {
         writeInto("alpha-card", text(a.cardRepr))
         writeInto("not-alpha", text((~a).toString))
         writeInto("str-in-alpha", text(a.accepts(str).toString))
-        writeInto("alpha-dfa", text(a.toDfa.edges.length.toString))
+        val dfa = a.toDfa
+        writeInto("alpha-dfa", text(dfa.edges.length.toString))
+        drawGraph("#alpha-graph", dfa.toDot('α'))
       case None =>
         writeInto("alpha-card", errorText(alphaError))
         writeInto("not-alpha", errorText(alphaError))

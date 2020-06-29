@@ -59,9 +59,25 @@
 see <a href ="https://github.com/non/antimirov">https://github.com/non/antimirov</a> for more information
 
 by <a href="http://plastic-idolatry.com/erik/">eiríkr åsheim</a> (@d6 on <a href="https://twitter.com/d6">twitter</a> and <a href="https://mastodon.social/@d6">mastodon</a>)
+
     </pre>
 
+<div id="alpha-graph" style="text-align: center;"></div>
+
+    <script type="text/javascript" src="d3.v5.min.js"></script>
+    <script type="text/javascript" src="index.min.js"></script>
+    <script type="text/javascript" src="d3-graphviz.js"></script>
+
     <script type="text/javascript" src="antimirov-web-opt.js"></script>
+
+    <script type="text/javascript">
+function drawGraph(identifier, dot) {
+  d3
+    .select(identifier)
+    .graphviz()
+    .renderDot(dot)
+}
+    </script>
 
     <!-- <script type="text/javascript" src="antimirov-web-fastopt.js"></script> -->
 

@@ -86,7 +86,12 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
     Arrays.hashCode(array)
 
   override def toString: String =
-    if (isFull) "." else {
+    if (isFull) {
+      "."
+    } else if (size == 1) {
+      val c = array(0)
+      Chars.escape(c, Chars.Special)
+    } else {
       // TODO: could avoid allocation for ~this
       val (prefix, cs) = if (size <= 32768) ("[", this) else ("[^", ~this)
       cs.ranges.map(LetterSet.rangeRepr).mkString(prefix, "", "]")

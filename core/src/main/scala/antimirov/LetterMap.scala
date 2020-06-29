@@ -130,6 +130,16 @@ class LetterMap[A](
   def keySet: LetterSet =
     new LetterSet(keys)
 
+  def valueMap: Map[A, LetterSet] =
+    iterator
+      .map { case ((c1, c2), v) => (LetterSet(c1 to c2), v) }
+      .foldLeft(Map.empty[A, LetterSet]) { case (m, (ls1, v)) =>
+        m.updated(v, m.get(v) match {
+          case Some(ls0) => ls0 | ls1
+          case None => ls1
+        })
+      }
+
   def contains(c: Char): Boolean = {
     val n = Arrays.binarySearch(keys, c)
     (n >= 0) || (-(n + 1) % 2 == 1)

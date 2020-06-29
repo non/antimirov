@@ -46,14 +46,14 @@ object Chars {
    * Escape a string using the standard set of special regex
    * characters. This also wraps the string in double-quotes.
    */
-  def escape(s: String): String =
-    escape(s, Special + '"')
+  def escapeStr(s: String): String =
+    escapeStr(s, Special + '"')
 
   /**
    * Escape a string using the given set of special characters. This
    * also wraps the string in double-quotes.
    */
-  def escape(s: String, special: Set[Char]): String = {
+  def escapeStr(s: String, special: Set[Char]): String = {
     val sb = new StringBuilder
     sb.append("\"")
     s.foreach(c => sb.append(escape(c, special)))
