@@ -1,6 +1,6 @@
 package antimirov.web
 
-import antimirov.Rx
+import antimirov.{Graphviz, Rx}
 import org.scalajs.dom
 import org.scalajs.dom.{document, html}
 import scala.scalajs.js.annotation.JSExportTopLevel
@@ -109,7 +109,7 @@ object WebApp {
         writeInto("str-in-alpha", text(a.accepts(str).toString))
         val dfa = a.toDfa
         writeInto("alpha-dfa", text(dfa.edges.length.toString))
-        drawGraph("#alpha-graph", dfa.toDot('α', "monospace"))
+        drawGraph("#alpha-graph", Graphviz.dot(dfa, 'α', "monospace"))
       case None =>
         writeInto("alpha-card", errorText(alphaError))
         writeInto("not-alpha", errorText(alphaError))
@@ -125,7 +125,7 @@ object WebApp {
         writeInto("str-in-beta", text(b.accepts(str).toString))
         val dfa = b.toDfa
         writeInto("beta-dfa", text(dfa.edges.length.toString))
-        drawGraph("#beta-graph", dfa.toDot('β', "monospace"))
+        drawGraph("#beta-graph", Graphviz.dot(dfa, 'β', "monospace"))
       case None =>
         writeInto("beta-card", errorText(betaError))
         writeInto("not-beta", errorText(betaError))
