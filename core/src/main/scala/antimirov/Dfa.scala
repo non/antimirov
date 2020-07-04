@@ -116,9 +116,14 @@ case class Dfa(
    * printed surrounded by brackets (e.g. [4]).
    */
   override def toString: String =
-    edges.iterator.zipWithIndex.map { case (lm, i) =>
+    edges.iterator.zipWithIndex.map { case (e, i) =>
       val label = if (accept(i)) s"[$i]" else s"$i"
-      s"$label -> $lm"
+      e.toLetterMap.valueMap.iterator.map { case (dst, ls) =>
+        ls.toString match {
+          case s if s.startsWith("[") => s"$s -> $dst"
+          case s => s"'$s' -> $dst"
+        }
+      }.mkString(s"$label -> {", ", ", "}")
     }.mkString("\n")
 
   /**
