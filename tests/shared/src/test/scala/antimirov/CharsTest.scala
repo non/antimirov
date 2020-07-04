@@ -10,7 +10,7 @@ object CharsTest extends Properties("CharsTest") {
 
   def roundTrip(g: Gen[String]): Prop =
     forAll(g) { (s: String) =>
-      val t = Chars.escape(s)
+      val t = Chars.escapeStr(s)
       val o = Chars.unescape(t)
       Prop(o == Some(s)) :| s"$o != Some($s) [via $t]"
     }

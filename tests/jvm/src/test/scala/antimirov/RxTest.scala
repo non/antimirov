@@ -32,7 +32,7 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     val rr = U - r
     lst.find(s => rr.accepts(s)) match {
       case None => Prop(true)
-      case Some(s) => Prop(false) :| s"$rr erroneously matched ${Chars.escape(s)}"
+      case Some(s) => Prop(false) :| s"$rr erroneously matched ${Chars.escapeStr(s)}"
     }
   }
 
