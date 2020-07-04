@@ -81,7 +81,11 @@ object Parser {
         case Some('|') | Some(')') | Some('}') | None =>
           (rx0, j)
         case Some(c) =>
-          fmap(parseSimple(j))(rx0 * _)
+          if (i == j) {
+            die(i, s"unmatched $c")
+          } else {
+            fmap(parseSimple(j))(rx0 * _)
+          }
       }
     }
 

@@ -1,7 +1,7 @@
 package antimirov
 
 import java.util.regex.Pattern
-import org.scalacheck.{Prop, Properties}
+import org.scalacheck.{Prop, Properties, Test}
 import org.typelevel.claimant.Claim
 import scala.util.{Failure, Success, Try}
 
@@ -10,6 +10,11 @@ import Prop.{forAllNoShrink => forAll}
 import Util._
 
 object ParserTest extends Properties("ParserTest") { self =>
+
+  override def overrideParameters(params: Test.Parameters): Test.Parameters =
+    params
+      .withMinSuccessfulTests(100)
+      //.withPropFilter(Some("regression"))
 
   property("parsing preserves semantics") =
     forAll(genRx) { rx0 =>
@@ -73,6 +78,8 @@ object ParserTest extends Properties("ParserTest") { self =>
     "[\\]" ::
     "[\\q]" ::
     "[\\u999]" ::
+    "x]" ::
+    "x)" ::
     Nil
 
   property("invalid cases") =
@@ -85,4 +92,16 @@ object ParserTest extends Properties("ParserTest") { self =>
         case t: Throwable => Prop(false) :| s"unexpected error on $s (got $t)"
       }
     }.reduceLeft(_ && _)
+
+  property("regression") = {
+    val s = "x]"
+    try {
+      val r = Rx.parse(s)
+      Prop(false) :| s"parsed $s got $r (expected failure)"
+    } catch {
+      case Parser.ParseError(_, _) => Prop(true)
+      case t: Throwable => Prop(false) :| s"unexpected error on $s (got $t)"
+    }
+  }
+
 }
