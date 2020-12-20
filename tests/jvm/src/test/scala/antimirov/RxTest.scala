@@ -1,5 +1,6 @@
 package antimirov
 
+import java.lang.Integer.signum
 import java.util.regex.Pattern
 import org.scalacheck.{Gen, Prop, Properties, Test}
 import org.typelevel.claimant.Claim
@@ -304,6 +305,20 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
   property("Ordering[Rx]: U >= x") =
     Prop.forAll(genRx) { (x: Rx) =>
       Claim(lteq(x, U))
+    }
+
+  property("Ordering[Rx]: (s1 compare s2) = lexCompare(Rx(s1), Rx(s2))") =
+    Prop.forAll { (s1: String, s2: String) =>
+      Claim(signum(s1 compare s2) == -signum(lexCompare(Rx(s1), Rx(s2))))
+    }
+
+  property("Ordering[Rx]: rx.accepts(s) ~ lexCompare(rx, Rx(s))") =
+    Prop.forAll(genRx, genInput) { (rx: Rx, s: String) =>
+      if (rx.accepts(s)) {
+        Claim(lexCompare(Rx(s), rx) <= 0)
+      } else {
+        Claim(lexCompare(Rx(s), rx) != 0)
+      }
     }
 
   property("Ordering[Rx]: lexCompare(x, y) ~ partialCompare(x, y)") =
