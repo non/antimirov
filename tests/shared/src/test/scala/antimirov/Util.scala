@@ -44,9 +44,9 @@ object Util {
   // pairs, which our generators aren't smart enough to prevent.
 
   //val (cmin, cmax) = ('a', 'e')
-  //val (cmin, cmax) = ('a', 'z')
+  val (cmin, cmax) = ('a', 'z')
   //val (cmin, cmax) = (' ', '~')
-  val (cmin, cmax) = ('\u0000', '\ud7ff')
+  //val (cmin, cmax) = ('\u0000', '\ud7ff')
   //val (cmin, cmax) = ('\u0000', '\uffff')
 
   val alphabet: LetterSet =

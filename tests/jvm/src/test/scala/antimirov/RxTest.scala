@@ -266,4 +266,53 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
     Prop.forAll { (s: String) =>
       Claim(Rx(s) === Rx.concat(s.map(Rx(_))))
     }
+
+  import Rx.lexCompare
+
+  def lteq(x: Rx, y: Rx): Boolean =
+    lexCompare(x, y) <= 0
+
+  property("Ordering[Rx]: lexCompare(x, y) = lexCompare(y, x) * -1") =
+    Prop.forAll(genRx, genRx) { (x: Rx, y: Rx) =>
+      Claim(lexCompare(x, y) == -lexCompare(y, x))
+    }
+
+  property("Ordering[Rx]: (lexCompare(x, y) == 0) = (x === y)") =
+    Prop.forAll(genRx, genRx) { (x: Rx, y: Rx) =>
+      Claim((lexCompare(x, y) == 0) == (x === y))
+    }
+
+  property("Ordering[Rx]: transitivity") =
+    Prop.forAll(genRx, genRx, genRx) { (x: Rx, y: Rx, z: Rx) =>
+      if (lteq(x, y) && lteq(y, z)) {
+        Claim(lteq(x, z))
+      } else {
+        Claim(true)
+      }
+    }
+
+  property("Ordering[Rx]: identity") =
+    Prop.forAll(genRx) { (x: Rx) =>
+      Claim(lexCompare(x, x) == 0)
+    }
+
+  property("Ordering[Rx]: Phi <= x") =
+    Prop.forAll(genRx) { (x: Rx) =>
+      Claim(lteq(Rx.phi, x))
+    }
+
+  property("Ordering[Rx]: U >= x") =
+    Prop.forAll(genRx) { (x: Rx) =>
+      Claim(lteq(x, U))
+    }
+
+  property("Ordering[Rx]: lexCompare(x, y) ~ partialCompare(x, y)") =
+    Prop.forAll(genRx, genRx) { (x: Rx, y: Rx) =>
+      (x partialCompare y) match {
+        case 0.0 => Claim(lexCompare(x, y) == 0)
+        case n if n > 0.0 => Claim(lexCompare(x, y) > 0)
+        case n if n < 0.0 => Claim(lexCompare(x, y) < 0)
+        case _ /* nan */ => Claim(lexCompare(x, y) != 0)
+      }
+    }
 }
