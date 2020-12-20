@@ -309,7 +309,7 @@ object RxTest extends Properties("RxTest") with TimingProperties { self =>
 
   property("Ordering[Rx]: (s1 compare s2) = lexCompare(Rx(s1), Rx(s2))") =
     Prop.forAll { (s1: String, s2: String) =>
-      Claim(signum(s1 compare s2) == -signum(lexCompare(Rx(s1), Rx(s2))))
+      Claim(signum(s1 compare s2) == signum(lexCompare(Rx(s1), Rx(s2))))
     }
 
   property("Ordering[Rx]: rx.accepts(s) ~ lexCompare(rx, Rx(s))") =

@@ -1132,36 +1132,35 @@ object Rx {
     val derivCache = mutable.Map.empty[(Rx, Char), Rx]
     def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Int = {
       pair match {
-        case (Phi, rhs) => if (rhs.isPhi) 0 else -1
+        case (Phi, r2) => if (r2.isPhi) 0 else -1
         case (_, Phi) => 1
         case (Empty, Empty) => 0
-        case (r1, r2) if r1.acceptsEmpty != r2.acceptsEmpty =>
-          if (r1.acceptsEmpty) 1 else -1
-        case _ if env(pair) =>
-          0
+        case _ if env(pair) => 0
         case (r1, r2) =>
           val env2 = env + pair
           val alpha = LetterSet.venn(r1.firstSet, r2.firstSet)
-          var resc: Char = Char.MaxValue
-          var resn: Int = 0
+          var resc: Char = Char.MinValue
+          var resn: Int =
+            if (r1.acceptsEmpty) { if (r2.acceptsEmpty) 0 else -1 }
+            else if (r2.acceptsEmpty) 1 else 0
           val it = alpha.iterator
           while (it.hasNext) {
             it.next match {
               case Diff.Left(cs) =>
                 val c = cs.minOption.get
-                if (resn == 0 || c <= resc) {
+                if (resn == 0 || c >= resc) {
                   resc = c
                   resn = 1
                 }
               case Diff.Right(cs) =>
                 val c = cs.minOption.get
-                if (resn == 0 || c <= resc) {
+                if (resn == 0 || c >= resc) {
                   resc = c
                   resn = -1
                 }
               case Diff.Both(cs) =>
                 val c = cs.minOption.get
-                if (resn == 0 || c <= resc) {
+                if (resn == 0 || c >= resc) {
                   val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
                   val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
                   val n = recur(env2, (d1, d2))
