@@ -1134,8 +1134,7 @@ object Rx {
       pair match {
         case (Phi, rhs) => if (rhs.isPhi) 0 else -1
         case (_, Phi) => 1
-        case (Empty, rhs) => if (rhs.isEmpty) 0 else -1
-        case (_, Empty) => 1
+        case (Empty, Empty) => 0
         case (r1, r2) if r1.acceptsEmpty != r2.acceptsEmpty =>
           if (r1.acceptsEmpty) 1 else -1
         case _ if env(pair) =>
