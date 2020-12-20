@@ -676,15 +676,14 @@ sealed abstract class Rx { lhs =>
       pair match {
         case (Phi, rhs) =>
           if (rhs.isPhi) 0.0 else -1.0
-        case (lhs, Phi) =>
-          if (lhs.isPhi) 0.0 else 1.0
+        case (_, Phi) =>
+          1.0
         case (Empty, rhs) =>
           if (rhs.isEmpty) 0.0
           else if (rhs.acceptsEmpty) -1.0
           else Double.NaN
         case (lhs, Empty) =>
-          if (lhs.isEmpty) 0.0
-          else if (lhs.acceptsEmpty) 1.0
+          if (lhs.acceptsEmpty) 1.0
           else Double.NaN
         case _ if env(pair) =>
           0.0
@@ -1113,4 +1112,73 @@ object Rx {
       case r :: rest =>
         Right(r) :: parseConcats(rest)    }
 
+
+  /**
+   * Lexicographic ordering for Rx.
+   *
+   * To compare two sets, the comparison considers the union of all
+   * strings accepted by either in lexicographic ordering and finds
+   * the "first" string accepted by one but not the other. The regex
+   * that doesn't accept this string comes first.
+   *
+   * Facts about this ordering:
+   *
+   *     - Phi comes first and .* comes last
+   *     - if x is a subset of y, then lexCompare(x, y) <= 0
+   *     - if x is a superset of y, then lexCompare(x, y) >= 0
+   *     - x <= y and y <= z implies x <= y
+   */
+  def lexCompare(lhs: Rx, rhs: Rx): Int = {
+    val derivCache = mutable.Map.empty[(Rx, Char), Rx]
+    def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Int = {
+      pair match {
+        case (Phi, r2) => if (r2.isPhi) 0 else -1
+        case (_, Phi) => 1
+        case (Empty, Empty) => 0
+        case _ if env(pair) => 0
+        case (r1, r2) =>
+          val env2 = env + pair
+          val alpha = LetterSet.venn(r1.firstSet, r2.firstSet)
+          var resc: Char = Char.MinValue
+          var resn: Int =
+            if (r1.acceptsEmpty) { if (r2.acceptsEmpty) 0 else -1 }
+            else if (r2.acceptsEmpty) 1 else 0
+          val it = alpha.iterator
+          while (it.hasNext) {
+            it.next match {
+              case Diff.Left(cs) =>
+                val c = cs.minOption.get
+                if (resn == 0 || c >= resc) {
+                  resc = c
+                  resn = 1
+                }
+              case Diff.Right(cs) =>
+                val c = cs.minOption.get
+                if (resn == 0 || c >= resc) {
+                  resc = c
+                  resn = -1
+                }
+              case Diff.Both(cs) =>
+                val c = cs.minOption.get
+                if (resn == 0 || c >= resc) {
+                  val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
+                  val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
+                  val n = recur(env2, (d1, d2))
+                  if (n != 0) {
+                    resc = c
+                    resn = n
+                  }
+                }
+            }
+          }
+          resn
+      }
+    }
+    recur(Set.empty, (lhs, rhs))
+  }
+
+  val lexicographicOrdering: Ordering[Rx] =
+    new Ordering[Rx] {
+      def compare(x: Rx, y: Rx): Int = Rx.lexCompare(x, y)
+    }
 }
