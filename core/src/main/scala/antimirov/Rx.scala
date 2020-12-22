@@ -1118,8 +1118,11 @@ object Rx {
    *
    * To compare two sets, the comparison considers the union of all
    * strings accepted by either in lexicographic ordering and finds
-   * the "first" string accepted by one but not the other. The regex
-   * that doesn't accept this string comes first.
+   * the "last" string (lexicographically) that is accepted by one but
+   * not the other. The regex that doesn't accept this string comes
+   * first.
+   *
+   * For example /b/ < /[ac]/, but /[bc]/ > /[ac]/.
    *
    * Facts about this ordering:
    *
@@ -1147,19 +1150,19 @@ object Rx {
           while (it.hasNext) {
             it.next match {
               case Diff.Left(cs) =>
-                val c = cs.minOption.get
+                val c = cs.maxOption.get
                 if (resn == 0 || c >= resc) {
                   resc = c
                   resn = 1
                 }
               case Diff.Right(cs) =>
-                val c = cs.minOption.get
+                val c = cs.maxOption.get
                 if (resn == 0 || c >= resc) {
                   resc = c
                   resn = -1
                 }
               case Diff.Both(cs) =>
-                val c = cs.minOption.get
+                val c = cs.maxOption.get
                 if (resn == 0 || c >= resc) {
                   val d1 = derivCache.getOrElseUpdate((r1, c), r1.deriv(c))
                   val d2 = derivCache.getOrElseUpdate((r2, c), r2.deriv(c))
