@@ -22,3 +22,4 @@ tests.iml
 docs/src/main/tut/contributing.md
 docs/src/main/tut/index.md
 .metals
+.bsp

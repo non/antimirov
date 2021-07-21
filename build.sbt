@@ -13,7 +13,7 @@ lazy val antimirovSettings = Seq(
     ScalaCheck.value % Test ::
     Claimant.value % Test ::
     Nil,
-  testOptions in Test +=
+  Test / testOptions +=
     //Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "1", "-w", "8"),
     Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "1"),
   scalacOptions ++=
@@ -40,13 +40,13 @@ lazy val antimirovSettings = Seq(
   // HACK: without these lines, the console is basically unusable,
   // since all imports are reported as being unused (and then become
   // fatal errors).
-  scalacOptions in (Compile, console) ~= { _.filterNot("-Xlint" == _) },
-  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
+  Compile / console / scalacOptions ~= { _.filterNot("-Xlint" == _) },
+  Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   // release stuff
   releaseCrossBuild := true,
   releasePublishArtifactsAction := PgpKeys.publishSigned.value,
   publishMavenStyle := true,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   pomIncludeRepository := Function.const(false),
   releaseProcess := Seq[ReleaseStep](
     checkSnapshotDependencies,
@@ -98,7 +98,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(
     name := "antimirov-core")
   .jsSettings(
-    scalaJSStage in Global := FastOptStage,
+    Global / scalaJSStage := FastOptStage,
     parallelExecution := false,
     coverageEnabled := false,
     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv())
@@ -115,7 +115,7 @@ lazy val check = crossProject(JSPlatform, JVMPlatform)
     name := "antimirov-check",
     libraryDependencies += ScalaCheck.value)
   .jsSettings(
-    scalaJSStage in Global := FastOptStage,
+    Global / scalaJSStage := FastOptStage,
     parallelExecution := false,
     coverageEnabled := false,
     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv())
@@ -135,10 +135,9 @@ lazy val props = crossProject(JSPlatform, JVMPlatform)
     // execution for all our other tests. otherwise we'd have to run
     // all of tests sequentially.
     testFrameworks += new TestFramework("scalaprops.ScalapropsFramework"),
-    parallelExecution in Test := false)
+    Test / parallelExecution := false)
   .jsSettings(
-    scalaJSStage in Global := FastOptStage,
-    parallelExecution := false,
+    Global / scalaJSStage := FastOptStage,
     coverageEnabled := false,
     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv())
 
@@ -155,7 +154,7 @@ lazy val tests = crossProject(JSPlatform, JVMPlatform)
     name := "antimirov-tests",
     libraryDependencies += ScalaCheck.value)
   .jsSettings(
-    scalaJSStage in Global := FastOptStage,
+    Global / scalaJSStage := FastOptStage,
     parallelExecution := false,
     coverageEnabled := false,
     jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv())
