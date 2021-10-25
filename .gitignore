@@ -18,8 +18,11 @@ TAGS
 *.sublime-project
 *.sublime-workspace
 tests.iml
-# Auto-copied by sbt-microsites
 docs/src/main/tut/contributing.md
 docs/src/main/tut/index.md
 .metals
 .bsp
+.bloop
+project/.bloop
+project/metals.sbt
+project/project

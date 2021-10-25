@@ -334,6 +334,16 @@ abstract class LetterSetTesting(name: String) extends Properties(name) with Alph
       Claim(lhs == rhs)
     }
 
+  property("(x -- y) = x & (~y)") =
+    forAll { (x: LetterSet, y: LetterSet) =>
+      Claim((x -- y) == (x & (~y)))
+    }
+
+  property("(x ^ y) = (x | y) -- (x & y)") =
+    forAll { (x: LetterSet, y: LetterSet) =>
+      Claim((x ^ y) == (x | y) -- (x & y))
+    }
+
   property("LetterSet != Set") =
     forAll { (x: LetterSet, y: Set[Char]) =>
       Claim(x != y)
@@ -394,7 +404,33 @@ abstract class LetterSetTesting(name: String) extends Properties(name) with Alph
       else Claim(LetterSet(x to y) == LetterSet(x until (y + 1).toChar))
     }
 
-  // TODO: test venn
+  property("venn(x, y)") =
+    forAll { (x: LetterSet, y: LetterSet) =>
+      val zs = LetterSet.venn(List(x), List(y))
+      val zx = LetterSet.union(zs.collect {
+        case Diff.Left(cs) => cs
+        case Diff.Both(cs) => cs
+      })
+      val zy = LetterSet.union(zs.collect {
+        case Diff.Right(cs) => cs
+        case Diff.Both(cs) => cs
+      })
+      Claim(zx == x && zy == y)
+    }
+
+  property("diff(x, y)") =
+    forAll { (x: LetterSet, y: LetterSet) =>
+      val zs = LetterSet.diff(x, y).toList
+      val zx = LetterSet.union(zs.collect {
+        case Diff.Left((c1, c2)) => LetterSet(c1 to c2)
+        case Diff.Both((c1, c2)) => LetterSet(c1 to c2)
+      })
+      val zy = LetterSet.union(zs.collect {
+        case Diff.Right((c1, c2)) => LetterSet(c1 to c2)
+        case Diff.Both((c1, c2)) => LetterSet(c1 to c2)
+      })
+      Claim(zx == x && zy == y)
+    }
 }
 
 object LetterSetTestAlpha extends LetterSetTesting("LetterSet(alpha)") {

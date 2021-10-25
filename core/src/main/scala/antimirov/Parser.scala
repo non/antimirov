@@ -101,7 +101,11 @@ object Parser {
           case _ => (rx, j)
         }
       val (rx, j) = parseAtomic(i)
-      recur(rx, j)
+      if (i == j) {
+        (rx, j)
+      } else {
+        recur(rx, j)
+      }
     }
 
     def parseRepeat(i: Int): ((Int, Int), Int) =

@@ -20,7 +20,7 @@ import scala.collection.mutable
  *   - the order of ranges is lowest-to-highest (by start)
  *   - i.e. each range is [start, end] where start <= end
  *   - single elements are represented as [c, c]
- *   - all elements found in the array is are members of the set
+ *   - all elements found in the array are members of the set
  *   - elements not found in the array might also be members
  *
  * This layout means we can use binary search to quickly check for
@@ -69,22 +69,36 @@ import scala.collection.mutable
  *
  * You could imagine building a data structure that uses a Set[Char]
  * for individual characters and only uses a LetterSet for contiguous
- * ranges. This approach is not used here because the complexity of
+ * ranges. This approach is not used here because the details of
  * going back and forth between these representations when characters
  * are added and removed would add considerable complexity to the
  * (already complex) implementation.
  */
 class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
 
+  /**
+   * Java universal equality.
+   */
   override def equals(that: Any): Boolean =
     that match {
       case ls: LetterSet => Arrays.equals(array, ls.array)
       case _ => false
     }
 
+  def rev[A](xs: List[A]): List[A] =
+    xs.reverse
+
+  /**
+   * Hash code.
+   *
+   * Since the hash code is expensive to compute we memoize the result.
+   */
   override lazy val hashCode: Int =
     Arrays.hashCode(array)
 
+  /**
+   * Java toString method, using regex character class syntax.
+   */
   override def toString: String =
     if (isFull) {
       "."
@@ -97,9 +111,25 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
       cs.ranges.map(LetterSet.rangeRepr).mkString(prefix, "", "]")
     }
 
-  lazy val size: Int =
-    ranges.map { case (x, y) => y - x + 1 }.sum
+  /**
+   * Cardinality of the set of characters.
+   *
+   * This size represents the number of characters matched, not the number of
+   * character groups or anything else corresponding to its internal structure.
+   */
+  lazy val size: Int = {
+    var i = 0
+    var sum = 0
+    while (i < array.length) {
+      sum += array(i + 1) - array(i) + 1
+      i += 2
+    }
+    sum
+  }
 
+  /**
+   * Iterate across each character range in the set.
+   */
   def ranges: Iterator[(Char, Char)] =
     new Iterator[(Char, Char)] {
       var i = 0
@@ -111,6 +141,11 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
       }
     }
 
+  /**
+   * Determine if this set is a subset of the given set.
+   *
+   * Also returns true if the sets are equal.
+   */
   def subsetOf(rhs: LetterSet): Boolean = {
     var start = 0
     val it = lhs.ranges
@@ -123,9 +158,23 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
     true
   }
 
+  /**
+   * Determine if this set is a superset of the given set.
+   *
+   * Also returns true if the sets are equal.
+   */
   def supersetOf(rhs: LetterSet): Boolean =
     rhs subsetOf lhs
 
+  /**
+   * Compare the given sets using a partial ordering based on set relations.
+   *
+   * Returns:
+   *  *  0.0 if the sets are equal
+   *  * -1.0 if `lhs` is a subset of `rhs`
+   *  *  1.0 if `lhs` is a superset of `rhs`
+   *  *  NaN otherwise
+   */
   def partialCompare(rhs: LetterSet): Double =
     (lhs subsetOf rhs, lhs supersetOf rhs) match {
       case (true, true) => 0.0
@@ -134,35 +183,78 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
       case (false, false) => Double.NaN
     }
 
+  /**
+   * Iterate across every character in the set.
+   *
+   * Note that this can be very expensive -- it is mostly useful for testing or
+   * working interactively. Generally other operations are preferable.
+   */
   def iterator: Iterator[Char] =
     ranges.flatMap { case (c1, c2) => (c1 to c2).iterator }
 
+  /**
+   * Evaluate a predicate for every character in the set.
+   *
+   * Note that this can be very expensive -- it is mostly useful for testing or
+   * working interactively. Generally other operations are preferable.
+   */
   def forall(f: Char => Boolean): Boolean =
     iterator.forall(f)
 
+  /**
+   * Test if the set is empty.
+   */
   def isEmpty: Boolean =
     array.length == 0
 
-  def nonEmpty: Boolean =
-    array.length != 0
-
+  /**
+   * Test if the set contains exactly one character.
+   */
   def isSingleton: Boolean =
     array.length == 2 && array(0) == array(1)
 
+  /**
+   * Test if the set is non-empty.
+   */
+  def nonEmpty: Boolean =
+    array.length != 0
+
+  /**
+   * Test if the set contains all characters.
+   */
   def isFull: Boolean =
     this == LetterSet.Full
 
+  /**
+   * For single-valued sets return that single value.
+   */
   def singleValue: Option[Char] =
     if (array.length == 2 && array(0) == array(1)) Some(array(0)) else None
 
+  /**
+   * For non-empty sets return its smallest element.
+   */
   def minOption: Option[Char] =
     if (array.length == 0) None else Some(array(0))
 
+  /**
+   * For non-empty sets return its largest element.
+   */
   def maxOption: Option[Char] =
     if (array.length == 0) None else Some(array.last)
 
+  /**
+   * Test if the set contains the given character.
+   *
+   * This method is an alias for the contains method.
+   */
   def apply(c: Char): Boolean = contains(c)
 
+  /**
+   * Access elements of the set by positional index.
+   *
+   * Requires that 0 <= index < size.
+   */
   def get(index: Int): Char =
     if (index < 0 || size <= index) {
       sys.error(s"invalid index: $index")
@@ -180,17 +272,29 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
       // $COVERAGE-ON$
     }
 
+  /**
+   * Returns whether the given sets contain any characters in common.
+   */
   def intersects(rhs: LetterSet): Boolean =
     LetterSet.diff(lhs, rhs).exists {
       case Diff.Both(_) => true
       case _ => false
     }
 
+  /**
+   * Returns whether the set contains the given character.
+   */
   def contains(c: Char): Boolean = {
     val n = Arrays.binarySearch(array, c)
     (n >= 0) || (-(n + 1) % 2 == 1)
   }
 
+  /**
+   * Determine if a given range is contained, starting at the given index.
+   *
+   * The `start parameter is used to optimize the `subsetOf` method, which can
+   * narrow the section of the array to be searched as we move through it.
+   */
   private def containsRangeIndex(c1: Char, c2: Char, start: Int): (Int, Boolean) =
     Arrays.binarySearch(array, start, array.length, c1) match {
       case n1 if n1 < 0 =>
@@ -233,6 +337,12 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
   def containsRange(c1: Char, c2: Char): Boolean =
     containsRangeIndex(c1, c2, 0)._2
 
+  /**
+   * Return the complement of this set.
+   *
+   * The complement accepts the characters that this set rejects, and rejects
+   * the set that this set accepts.
+   */
   def unary_~ : LetterSet =
     if (this == LetterSet.Empty) LetterSet.Full
     else if (this == LetterSet.Full) LetterSet.Empty
@@ -268,6 +378,9 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
       new LetterSet(out)
     }
 
+  /**
+   * Add a character to this set.
+   */
   def +(c: Char): LetterSet = {
     val n = Arrays.binarySearch(array, c)
     val i = -(n + 1)
@@ -302,6 +415,9 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
     }
   }
 
+  /**
+   * Remove a character to this set.
+   */
   def -(c: Char): LetterSet = {
     val n = Arrays.binarySearch(array, c)
     if (n >= 0) {
@@ -337,6 +453,11 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
     }
   }
 
+  /**
+   * Intersect the given sets.
+   *
+   * The result accepts characters accepted by both sets.
+   */
   def &(rhs: LetterSet): LetterSet = {
     val buf = mutable.ArrayBuffer.empty[Char]
     val xs = lhs.array
@@ -376,6 +497,11 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
     if (buf.isEmpty) LetterSet.Empty else new LetterSet(buf.toArray)
   }
 
+  /**
+   * Union the given sets.
+   *
+   * The result accepts characters accepted by either set.
+   */
   def |(rhs: LetterSet): LetterSet =
     if      (lhs.isEmpty || rhs.isFull) rhs
     else if (rhs.isEmpty || lhs.isFull) lhs
@@ -387,72 +513,223 @@ class LetterSet(private[antimirov] val array: Array[Char]) { lhs =>
       val ys = rhs.array
 
       var start: Char = Char.MaxValue
-      var end: Char = Char.MaxValue
+      var last: Char = Char.MaxValue
       if (xs(0) <= ys(0)) {
         start = xs(0)
-        end = xs(1)
+        last = xs(1)
         i += 2
       } else {
         start = ys(0)
-        end = ys(1)
+        last = ys(1)
         j += 2
       }
 
       while (i < xs.length || j < ys.length) {
         if (i < xs.length && (j >= ys.length || xs(i) <= ys(j))) {
-          if (xs(i) <= (end + 1)) {
-            end = Integer.max(end.toInt, xs(i + 1).toInt).toChar
+          if (xs(i) <= (last + 1)) {
+            last = Integer.max(last.toInt, xs(i + 1).toInt).toChar
           } else {
             buf.append(start)
-            buf.append(end)
+            buf.append(last)
             start = xs(i)
-            end = xs(i + 1)
+            last = xs(i + 1)
           }
           i += 2
         } else {
-          if (ys(j) <= (end + 1)) {
-            end = Integer.max(end.toInt, ys(j + 1).toInt).toChar
+          if (ys(j) <= (last + 1)) {
+            last = Integer.max(last.toInt, ys(j + 1).toInt).toChar
           } else {
             buf.append(start)
-            buf.append(end)
+            buf.append(last)
             start = ys(j)
-            end = ys(j + 1)
+            last = ys(j + 1)
           }
           j += 2
         }
       }
 
       buf.append(start)
-      buf.append(end)
+      buf.append(last)
       new LetterSet(buf.toArray)
     }
 
-  // TODO: could reduce allocations/work by calculating directly
+  /**
+   * Set difference.
+   *
+   * The result accepts characters which `lhs` accepts and `rhs` rejects.
+   *
+   * (x -- y) is equivalent to (x & ~y).
+   */
   def --(rhs: LetterSet): LetterSet =
-    lhs & (~rhs)
+    //lhs & (~rhs)
+    if (rhs.isEmpty) {
+      lhs
+    } else if (rhs.isFull) {
+      LetterSet.empty
+    } else {
+      val buf = mutable.ArrayBuffer.empty[Char]
+      var i = 0
+      val xs = lhs.array
+      var j = 0
+      val ys = rhs.array
+      while (i < xs.length) {
+        var x1 = xs(i)
+        var x2 = xs(i + 1)
+        // we will step through ys, using each mask to chip away at (x1, x2)
+        // where needed and writing into buf when we are sure no future masks
+        // can affect (x1, x2). we increment j only when we are sure we are done
+        // with a mask.
+        while (j < ys.length && ys(j) <= x2) {
+          val y1 = ys(j)
+          val y2 = ys(j + 1)
+          if (y2 < x1) {
+            // y1 <= y2 < x1 <= x2; mask has no effect (done)
+            j += 2
+          } else if (x1 < y1) {
+            // x1 < y1; y1 <= x2; y1 <= y2
+            if (x2 <= y2) {
+              // x1 < y1 <= x2 <= y2; mask removes the back (not done)
+              x2 = (y1 - 1).toChar
+            } else {
+              // x1 < y1 <= y2 < x2; mask removes the middle (done)
+              buf.append(x1)
+              buf.append((y1 - 1).toChar)
+              x1 = (y2 + 1).toChar
+              j += 2
+            }
+          } else {
+            // y1 <= x1 <= x2; y1 <= y2
+            if (x2 <= y2) {
+              // y1 <= x1 <= x2 <= y2; mask removes everything (not done)
+              // signal that we need to skip the append with x1 > x2
+              x1 = Char.MaxValue
+              x2 = Char.MinValue
+            } else {
+              // y1 <= x1 <= y2 < x2; mask removes the front (done)
+              x1 = (y2 + 1).toChar
+              j += 2
+            }
+          }
+        }
+        // in some cases we need to "skip" the append. we use x1 > x2 (which is
+        // normally illegal) as a signal to do this skipping.
+        if (x1 <= x2) {
+          buf.append(x1)
+          buf.append(x2)
+        }
+        i += 2
+      }
+      new LetterSet(buf.toArray)
+    }
 
-  // TODO: could reduce allocations/work by calculating directly
+  /**
+   * Exclusive-OR operator.
+   *
+   * The result accepts characters that are accepted by only one of the sets
+   * (but not both).
+   *
+   * (x ^ y) is equivalent to (x | y) -- (x & y)
+   */
   def ^(rhs: LetterSet): LetterSet =
-    (lhs | rhs) -- (lhs & rhs)
+    //(lhs | rhs) -- (lhs & rhs)
+    if      (lhs.isEmpty) rhs
+    else if (rhs.isEmpty) lhs
+    else if (lhs.isFull) ~rhs
+    else if (rhs.isFull) ~lhs
+    else {
+      val buf = mutable.ArrayBuffer.empty[Char]
+
+      def appendAll(xs: List[(Char, Char)]): Unit =
+        xs match {
+          case (c1, c2) :: rest =>
+            buf.append(c1)
+            buf.append(c2)
+            appendAll(rest)
+          case Nil =>
+            ()
+        }
+
+      def loop(xs: List[(Char, Char)], ys: List[(Char, Char)]): Unit =
+        (xs, ys) match {
+          case ((x1, x2) :: xt, (y1, y2) :: yt) =>
+            if (x1 < y1) {
+              if (x2 < y1) {
+                if ((x2 + 1) == y1) {
+                  // try to make a larger structure
+                  loop((x1, y2) :: yt, xt)
+                } else {
+                  buf.append(x1)
+                  buf.append(x2)
+                  loop(xt, ys)
+                }
+              } else {
+                buf.append(x1)
+                buf.append((y1 - 1).toChar)
+                if (x2 < y2) {
+                  loop(xt, ((x2 + 1).toChar, y2) :: yt)
+                } else if (x2 == y2) {
+                  loop(xt, yt)
+                } else { // y2 < x2
+                  loop(((y2 + 1).toChar, x2) :: xt, yt)
+                }
+              }
+            } else if (y1 < x1) {
+              loop(ys, xs)
+            } else {
+              if (x2 < y2) {
+                loop(xt, ((x2 + 1).toChar, y2) :: yt)
+              } else if (y2 < x2) {
+                loop(((y2 + 1).toChar, x2) :: xt, yt)
+              } else {
+                loop(xt, yt)
+              }
+            }
+          case (xs, Nil) => appendAll(xs)
+          case (Nil, ys) => appendAll(ys)
+        }
+      loop(lhs.ranges.toList, rhs.ranges.toList)
+      new LetterSet(buf.toArray)
+    }
 }
 
 object LetterSet {
 
+  /**
+   * Return an empty set.
+   */
   def empty: LetterSet =
     Empty
 
+  /**
+   * Return a singleton set containing just `c`.
+   */
   def apply(c: Char): LetterSet =
     new LetterSet(Array(c, c))
 
+  /**
+   * Return a set containing the given characters.
+   */
   def apply(xs: Char*): LetterSet =
     xs.foldLeft(Empty)(_ + _)
 
+  /**
+   * Return a set containing the given characters.
+   */
   def apply(r: NumericRange[Char]): LetterSet =
     if (r.isInclusive) new LetterSet(Array(r.start, r.end))
     else new LetterSet(Array(r.start, (r.end - 1).toChar))
 
+  /**
+   * Return a set containing the given characters.
+   */
   def apply(xs: Set[Char]): LetterSet =
     xs.foldLeft(Empty)(_ + _)
+
+  /**
+   * Union the given collection of sets into one set.
+   */
+  def union(css: Iterable[LetterSet]): LetterSet =
+    css.foldLeft(LetterSet.empty)(_ | _)
 
   val Empty: LetterSet =
     new LetterSet(Array.empty[Char])
@@ -464,6 +741,28 @@ object LetterSet {
     Chars.escape(c, Chars.RangeSpecial)
 
   // assumes lhs and rhs are disjoint
+
+  /**
+   * Compute a venn diagram of differences between two logical letter sets.
+   *
+   * Each list of letter sets is assumed to be disjoint (e.g. no two members of
+   * `lhs` should intersect with each other). Every character (or range) that
+   * occurs in either of the given lists will be contained in one of the
+   * elements of the result.
+   *
+   * The elements in the result are interpreted as follows:
+   *
+   *   * Diff.Left(cs): elements in `cs` only occur in `lhs`.
+   *   * Diff.Right(cs): elements in `cs` only occur in `rhs`.
+   *   * Diff.Both(cs): elements in `cs` occur in `lhs` and `rhs`.
+   *
+   * Like the input lists, the result list's elements are guaranteed to be
+   * disjoint with each other.
+   *
+   * Each input list is logically equivalent to the union of its elements.
+   * However, for efficiency reasons a list is accepted, which allows a more
+   * efficient implement of `Rx#firstSet`.
+   */
   def venn(lhs: List[LetterSet], rhs: List[LetterSet]): List[Diff[LetterSet]] = {
     type S = LetterSet
     def recur(lhs: List[S], rhs: List[S], res: List[Diff[S]]): List[Diff[S]] =
@@ -472,7 +771,9 @@ object LetterSet {
           var x = x0
           var r = res
           val b = List.newBuilder[S]
-          rhs.foreach { y =>
+          val it = rhs.iterator
+          while (it.hasNext) {
+            val y = it.next
             val xy = x & y
             if (xy.isEmpty) {
               b += y
@@ -492,6 +793,13 @@ object LetterSet {
     recur(lhs, rhs, Nil)
   }
 
+  /**
+   * Iterate over a list of differences between `x` and `y`.
+   *
+   * This is similar to the venn method, but at a lower level. It operates on
+   * individual character ranges rather than entire sets (`Diff[(Char, Char)]`
+   * instead of ``Diff[LetterSet]`), and as an `Iterator` rather than a `List`.
+   */
   def diff(x: LetterSet, y: LetterSet): Iterator[Diff[(Char, Char)]] =
     diff(x.ranges, y.ranges)
 
@@ -535,16 +843,16 @@ object LetterSet {
               Diff.Right((y1, (x1 - 1).toChar))
             }
           } else { /* x1 = y1 */
-            val end = Integer.min(x2.toInt, y2.toInt).toChar
+            val last = Integer.min(x2.toInt, y2.toInt).toChar
             lhs =
-              if (x2 > end) ((end + 1).toChar, x2)
+              if (x2 > last) ((last + 1).toChar, x2)
               else if (it1.hasNext) it1.next
               else null
             rhs =
-              if (y2 > end) ((end + 1).toChar, y2)
+              if (y2 > last) ((last + 1).toChar, y2)
               else if (it2.hasNext) it2.next
               else null
-            Diff.Both((x1, end))
+            Diff.Both((x1, last))
           }
         }
     }

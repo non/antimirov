@@ -5,6 +5,8 @@ def ScalaCheck = Def.setting("org.scalacheck" %%% "scalacheck" % "1.14.3")
 def ScalaProps = Def.setting("com.github.scalaprops" %%% "scalaprops" % "0.8.0")
 def Claimant = Def.setting("org.typelevel" %%% "claimant" % "0.1.3")
 
+Global / semanticdbEnabled := true
+
 lazy val antimirovSettings = Seq(
   organization := "org.spire-math",
   scalaVersion := "2.13.2",

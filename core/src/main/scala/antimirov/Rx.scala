@@ -1133,7 +1133,7 @@ object Rx {
    */
   def lexCompare(lhs: Rx, rhs: Rx): Int = {
     val derivCache = mutable.Map.empty[(Rx, Char), Rx]
-    def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Int = {
+    def recur(env: Set[(Rx, Rx)], pair: (Rx, Rx)): Int =
       pair match {
         case (Phi, r2) => if (r2.isPhi) 0 else -1
         case (_, Phi) => 1
@@ -1176,9 +1176,11 @@ object Rx {
           }
           resn
       }
-    }
+
     recur(Set.empty, (lhs, rhs))
   }
+
+  val xs = (1 to 1000).sorted
 
   val lexicographicOrdering: Ordering[Rx] =
     new Ordering[Rx] {
